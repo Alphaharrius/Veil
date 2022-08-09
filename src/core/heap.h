@@ -51,13 +51,17 @@ namespace veil {
         natives::OperationStatus allocation_status {};
     };
 
+    class ReferenceTable;
+
     class Heap {
     public:
         explicit Heap(HeapCreationInfo &creation_info);
 
         ~Heap();
 
-        HeapSection *allocate_section();
+        HeapSection *allocate_heap_section();
+
+        ReferenceTable *allocate_reference_table();
 
         concurrent::Synchronizable &get_allocation_lock();
 
@@ -78,7 +82,7 @@ namespace veil {
 
         static const uint8 FREED_BIT_POSITION = 15;
 
-        explicit MemoryReference(uint8 *address);
+        MemoryReference() : colored_pointer(0ULL), size(0), reference_count(1) {}
 
         [[nodiscard]] uint64 get_reference() const;
 
@@ -92,19 +96,25 @@ namespace veil {
 
         uint16 *color_bits();
 
+        [[nodiscard]] uint32 get_memory_size() const;
+
+        uint32 get_reference();
+
+        void reference();
+
+        void dereference();
+
     private:
-        uint64 colored_reference;
+        uint64 colored_pointer;
+        uint32 size;
+        std::atomic<uint32> reference_count;
     };
 
     class ReferenceTable : protected HeapSection {
     public:
         MemoryReference *get_reference();
 
-        MemoryReference *reuse_reference(uint32 memory_size);
-
-    private:
-        ReferenceTable(uint8 *table_address, uint32 table_size) :
-                HeapSection(table_address, table_size) {}
+        MemoryReference *reuse_reference(uint32 request_size);
     };
 
 }

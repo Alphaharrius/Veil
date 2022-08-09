@@ -1,8 +1,9 @@
 #include "core/heap.h"
 #include "util/natives.h"
+#include "util/diagnostics.h"
 
 uint8 *veil::HeapSection::allocate(uint32 request_size) {
-    if (request_size == 0 || this->allocation_offset + request_size >= this->allocation_ceiling + 1) {
+    if (request_size == 0 || this->allocation_offset + request_size - 1 >= this->allocation_ceiling) {
         return nullptr;
     }
     uint8 *allocated_address = this->allocation_offset;
@@ -52,8 +53,8 @@ veil::Heap::~Heap() {
     }
 }
 
-veil::HeapSection *veil::Heap::allocate_section() {
-    if (this->memory_offset + this->section_size < this->memory_ceiling + 1) {
+veil::HeapSection *veil::Heap::allocate_heap_section() {
+    if (this->memory_offset + this->section_size - 1 < this->memory_ceiling) {
         auto *internal_pool = new HeapSection(this->memory_offset,
                                               this->section_size);
         this->memory_offset += this->section_size;
@@ -62,61 +63,86 @@ veil::HeapSection *veil::Heap::allocate_section() {
     return nullptr;
 }
 
+veil::ReferenceTable *veil::Heap::allocate_reference_table() {
+    HeapSection *heap_section = this->allocate_heap_section();
+    return reinterpret_cast<veil::ReferenceTable *>(heap_section);
+}
+
 veil::concurrent::Synchronizable &veil::Heap::get_allocation_lock() {
     return this->allocation_lock;
 }
 
-veil::MemoryReference::MemoryReference(uint8 *address) {
-    this->colored_reference = 0ULL;
-    this->update_address(address);
-}
-
 uint64 veil::MemoryReference::get_reference() const {
-    return this->colored_reference;
+    return this->colored_pointer;
 }
 
 uint8 *veil::MemoryReference::get_address() const {
-    return (uint8 *) (this->colored_reference & MemoryReference::ADDRESS_BIT_MASK);
+    return (uint8 *) (this->colored_pointer & MemoryReference::ADDRESS_BIT_MASK);
 }
 
 void veil::MemoryReference::update_address(const uint8 *address) {
     uint64 masked_reference = ((uint64) address) & MemoryReference::ADDRESS_BIT_MASK;
-    this->colored_reference &= ~MemoryReference::ADDRESS_BIT_MASK;
-    this->colored_reference |= masked_reference;
+    this->colored_pointer &= ~MemoryReference::ADDRESS_BIT_MASK;
+    this->colored_pointer |= masked_reference;
 }
 
 void veil::MemoryReference::set_color(uint8 position, bool value) {
     uint64 mask = (1ULL << (MemoryReference::ADDRESS_BIT_COUNT + position));
     if (value) {
-        this->colored_reference |= mask;
+        this->colored_pointer |= mask;
     } else {
-        this->colored_reference &= ~mask;
+        this->colored_pointer &= ~mask;
     }
 }
 
 bool veil::MemoryReference::get_color(uint8 position) const {
     uint64 mask = (1ULL << (MemoryReference::ADDRESS_BIT_COUNT + position));
-    return this->colored_reference & mask;
+    return this->colored_pointer & mask;
 }
 
 uint16 *veil::MemoryReference::color_bits() {
-    return ((uint16 *) &this->colored_reference) + 3;
+    return ((uint16 *) &this->colored_pointer) + 3;
+}
+
+uint32 veil::MemoryReference::get_memory_size() const {
+    return this->size;
+}
+
+uint32 veil::MemoryReference::get_reference() {
+    return this->reference_count.load();
+}
+
+void veil::MemoryReference::reference() {
+    this->reference_count++;
+}
+
+void veil::MemoryReference::dereference() {
+    assert(this->reference_count.load() == 0);
+    this->reference_count--;
 }
 
 veil::MemoryReference *veil::ReferenceTable::get_reference() {
-    return (veil::MemoryReference *) this->allocate(sizeof(veil::MemoryReference));
+    auto *memory_reference = (veil::MemoryReference *) this->allocate(sizeof(veil::MemoryReference));
+    // Call the constructor on the existing allocation for this reference object.
+    new (memory_reference) veil::MemoryReference();
+    return memory_reference;
 }
 
-veil::MemoryReference *veil::ReferenceTable::reuse_reference(uint32 memory_size) {
+veil::MemoryReference *veil::ReferenceTable::reuse_reference(uint32 request_size) {
     veil::MemoryReference *reusable = nullptr;
+    bool memory_reusable = false;
     for (auto *current = (veil::MemoryReference *) this->allocation_address;
-         current < (veil::MemoryReference *) this->allocation_offset; current++) {
-        // todo >> this condition should includes a check of whether the referenced memory size matches.
-        // todo >> the requested memory size should be at least 80% of the referenced memory size.
+         current < (veil::MemoryReference *) this->allocation_offset && !memory_reusable; current++) {
         if (current->get_color(veil::MemoryReference::FREED_BIT_POSITION)) {
             reusable = current;
-            break;
+            uint32 memory_size = current->get_memory_size();
+            memory_reusable = request_size == memory_size ||
+                              (request_size < memory_size && (float) request_size / (float) memory_size > 0.8f);
         }
+    }
+    if (reusable != nullptr && !memory_reusable) {
+        *reusable->color_bits() = 0;
+        reusable->update_address(nullptr);
     }
     return reusable;
 }
