@@ -108,13 +108,12 @@ veil::concurrent::Synchronizer::Synchronizer() {
 }
 
 veil::concurrent::Synchronizer::~Synchronizer() {
-    // Delete all monitors except for the anchor of the chain.
-    this->monitor->iterate_clockwise(
-            [](ReentranceMonitor *anchor) { return anchor->get_next(); },
-            [](ReentranceMonitor *anchor, ReentranceMonitor *current) { delete current; },
-            [](ReentranceMonitor *anchor, ReentranceMonitor *current) { return current == anchor; });
-    // Delete the anchor monitor of the chain.
-    delete this->monitor;
+    // Delete all child monitors.
+    for (ReentranceMonitor *current = this->monitor->get_next(); current != this->monitor;) {
+        ReentranceMonitor *previous = current;
+        current = current->get_next();
+        delete previous;
+    }
 }
 
 void veil::concurrent::Synchronizer::acquire(veil::concurrent::Synchronizable *target) {
@@ -143,9 +142,9 @@ void veil::concurrent::Synchronizer::acquire(veil::concurrent::Synchronizable *t
         // so if the current operation is reentrance like, the objective is more likely to be satisfied.
         current = current->get_next();
     } while (
-            // Added for optimization, if this synchronizer has yet to acquire any target, there will
-            // never be a monitor matches the condition for the primary objective, thus we can exit with
-            // a monitor that satisfies the secondary objective.
+        // Added for optimization, if this synchronizer has yet to acquire any target, there will
+        // never be a monitor matches the condition for the primary objective, thus we can exit with
+        // a monitor that satisfies the secondary objective.
             (available == nullptr || this->nested_level != 0) &&
             // Exit when the primary objective is fulfilled.
             reentrance == nullptr && anchor != current);
@@ -168,10 +167,12 @@ void veil::concurrent::Synchronizer::release(veil::concurrent::Synchronizable *t
     not_null(target);
 
     if (this->nested_level == 0)
+        // This indicates the synchronizer hasn't acquired any target yet, exits the method.
         return;
     ReentranceMonitor *anchor = this->monitor;
     ReentranceMonitor *current = anchor;
     do {
+        // Loop until the required monitor is found and releases the target.
         if (current->release(target)) {
             this->nested_level--;
             break;
