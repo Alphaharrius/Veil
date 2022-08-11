@@ -3,11 +3,20 @@
 #include "util/diagnostics.h"
 
 uint8 *veil::HeapSection::allocate(uint32 request_size) {
-    if (request_size == 0 || this->allocation_offset + request_size - 1 >= this->allocation_ceiling) {
+    // NOTE: The operations are not atomic thus is not thread-safe, but an allocation
+    // with the heap section is expected to be used by its parent thread only.
+    if (request_size == 0 ||
+        // Return nullptr if the allocation condition is not fulfilled,
+        // especially when this section does not have any explicit free memories.
+        this->allocation_offset + request_size - 1 >= this->allocation_ceiling) {
         return nullptr;
     }
+    // The current allocation offset is the available address for this request size.
     uint8 *allocated_address = this->allocation_offset;
+    // As the heap is allocated from the system, some bits might be set by previous usage,
+    // reset all bits of this allocation before using is the most efficient way.
     memset((void *) allocated_address, 0, request_size);
+    // Increment the allocation offset by the request size.
     this->allocation_offset += request_size;
     return allocated_address;
 }
@@ -24,19 +33,21 @@ void veil::HeapSection::reset() {
 }
 
 veil::Heap::Heap(HeapCreationInfo &creation_info) {
-    if (creation_info.memory_size == 0 || creation_info.memory_size % natives::get_page_size() != 0) {
-        creation_info.error = HeapCreationInfo::Error::INVALID_MEMORY_SIZE;
-        return;
-    }
-    if (creation_info.section_size == 0 ||
-        creation_info.memory_size % creation_info.section_size != 0) {
-        creation_info.error = HeapCreationInfo::Error::INVALID_INTERNAL_SECTION_SIZE;
-        return;
-    }
+    // Retrieve the system page size.
+    uint32 page_size = natives::get_page_size();
+    // Round the section size to an integer multiple of the system page size.
+    if (creation_info.section_size % page_size != 0)
+        creation_info.section_size = creation_info.section_size - (creation_info.section_size % page_size) + page_size;
+    // Round the total memory size to an integer multiple of the rounded section size, thus the total memory size is
+    // also commensurate with the system page size.
+    if (creation_info.memory_size % creation_info.memory_size != 0)
+        creation_info.memory_size =
+                creation_info.memory_size - (creation_info.memory_size % creation_info.section_size) +
+                creation_info.section_size;
+    // Make system call to reserve a memory section of the requested size.
     void *allocated_address = veil::natives::virtual_allocate(creation_info.memory_size,
                                                               creation_info.allocation_status);
     if (!creation_info.allocation_status.success) {
-        creation_info.error = HeapCreationInfo::Error::ALLOCATION_ERROR;
         return;
     }
     this->memory_address = static_cast<uint8 *>(allocated_address);
@@ -48,12 +59,16 @@ veil::Heap::Heap(HeapCreationInfo &creation_info) {
 
 veil::Heap::~Heap() {
     if (this->memory_address != nullptr) {
+        // The heap is assumed to be singular throughout the virtual machine, the status of this
+        // operation is trivial because the entire virtual machine process is being terminated.
         natives::OperationStatus operation_status;
+        // The mapped memory can only be freed by another system call.
         natives::virtual_free(this->memory_address, this->memory_size, operation_status);
     }
 }
 
 veil::HeapSection *veil::Heap::allocate_heap_section() {
+    // todo: using an integer to store the current allocated index, as all sections are having same size.
     if (this->memory_offset + this->section_size - 1 < this->memory_ceiling) {
         auto *internal_pool = new HeapSection(this->memory_offset,
                                               this->section_size);
@@ -65,6 +80,8 @@ veil::HeapSection *veil::Heap::allocate_heap_section() {
 
 veil::ReferenceTable *veil::Heap::allocate_reference_table() {
     HeapSection *heap_section = this->allocate_heap_section();
+    // The reference table is just a mask class of a heap section.
+    // todo: there must be a better approach..
     return reinterpret_cast<veil::ReferenceTable *>(heap_section);
 }
 
@@ -87,11 +104,11 @@ void veil::MemoryReference::update_address(const uint8 *address) {
 }
 
 void veil::MemoryReference::set_color(uint8 position, bool value) {
-    uint64 mask = (1ULL << (MemoryReference::ADDRESS_BIT_COUNT + position));
+    uint64 bit_mask = (1ULL << (MemoryReference::ADDRESS_BIT_COUNT + position));
     if (value) {
-        this->colored_pointer |= mask;
+        this->colored_pointer |= bit_mask;
     } else {
-        this->colored_pointer &= ~mask;
+        this->colored_pointer &= ~bit_mask;
     }
 }
 
@@ -124,7 +141,7 @@ void veil::MemoryReference::dereference() {
 veil::MemoryReference *veil::ReferenceTable::get_reference() {
     auto *memory_reference = (veil::MemoryReference *) this->allocate(sizeof(veil::MemoryReference));
     // Call the constructor on the existing allocation for this reference object.
-    new (memory_reference) veil::MemoryReference();
+    new(memory_reference) veil::MemoryReference();
     return memory_reference;
 }
 

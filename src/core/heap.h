@@ -33,21 +33,12 @@ namespace veil {
     };
 
     struct HeapCreationInfo {
-        enum Error {
-            NONE,
-            INVALID_MEMORY_SIZE,
-            INVALID_INTERNAL_SECTION_SIZE,
-            ALLOCATION_ERROR
-        };
-
         HeapCreationInfo(uint64 memory_size, uint32 section_size) :
                 memory_size(memory_size),
-                section_size(section_size),
-                error(HeapCreationInfo::Error::NONE) {}
+                section_size(section_size) {}
 
         uint64 memory_size;
         uint32 section_size;
-        HeapCreationInfo::Error error;
         natives::OperationStatus allocation_status {};
     };
 
