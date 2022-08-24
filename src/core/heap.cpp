@@ -21,7 +21,7 @@ uint8 *veil::HeapSection::allocate(uint32 request_size) {
     return allocated_address;
 }
 
-void veil::HeapSection::reuse(veil::HeapSection reset_info) {
+void veil::HeapSection::reuse(veil::HeapSection &reset_info) {
     this->allocation_address = reset_info.allocation_address;
     this->allocation_offset = reset_info.allocation_offset;
     this->allocation_ceiling = reset_info.allocation_ceiling;
@@ -67,22 +67,13 @@ veil::Heap::~Heap() {
     }
 }
 
-veil::HeapSection *veil::Heap::allocate_heap_section() {
+void veil::Heap::allocate_heap_section(HeapSection &heap_section) {
     // todo: using an integer to store the current allocated index, as all sections are having same size.
     if (this->memory_offset + this->section_size - 1 < this->memory_ceiling) {
-        auto *internal_pool = new HeapSection(this->memory_offset,
-                                              this->section_size);
+        HeapSection allocated_section(this->memory_address, this->section_size);
+        heap_section.reuse(allocated_section);
         this->memory_offset += this->section_size;
-        return internal_pool;
     }
-    return nullptr;
-}
-
-veil::ReferenceTable *veil::Heap::allocate_reference_table() {
-    HeapSection *heap_section = this->allocate_heap_section();
-    // The reference table is just a mask class of a heap section.
-    // todo: there must be a better approach..
-    return reinterpret_cast<veil::ReferenceTable *>(heap_section);
 }
 
 veil::concurrent::Synchronizable &veil::Heap::get_allocation_lock() {

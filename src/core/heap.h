@@ -10,7 +10,7 @@ namespace veil {
 
     class HeapSection :
             public util::ChainableResource<HeapSection>,
-            public util::ReusableResource<HeapSection>,
+            public util::ReusableResource<HeapSection &>,
             private concurrent::Synchronizable {
     public:
         HeapSection(uint8 *allocation_address, uint32 allocation_size) :
@@ -19,11 +19,13 @@ namespace veil {
                 allocation_size(allocation_size),
                 allocation_ceiling(allocation_address + allocation_size) {}
 
+        HeapSection() : HeapSection(nullptr, 0) {}
+
         uint8 *allocate(uint32 request_size);
 
         void reset() override;
 
-        void reuse(HeapSection reset_info) override;
+        void reuse(HeapSection &reset_info) override;
 
     protected:
         uint8 *allocation_address;
@@ -39,7 +41,7 @@ namespace veil {
 
         uint64 memory_size;
         uint32 section_size;
-        natives::OperationStatus allocation_status {};
+        natives::OperationStatus allocation_status{};
     };
 
     class ReferenceTable;
@@ -50,9 +52,7 @@ namespace veil {
 
         ~Heap();
 
-        HeapSection *allocate_heap_section();
-
-        ReferenceTable *allocate_reference_table();
+        void allocate_heap_section(HeapSection &heap_section);
 
         concurrent::Synchronizable &get_allocation_lock();
 
