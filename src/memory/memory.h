@@ -96,7 +96,7 @@ namespace veil::memory {
         /// class is to call the constructor on a memory section with the size of this class.
         void *operator new(size_t size) = delete;
 
-        /// The allocator must be recycled or deleted by it's distributor which is the memory management.
+        /// The allocator must be recycled or deleted by it's parent \c Management.
         void operator delete(void *) = delete;
 
     private:
