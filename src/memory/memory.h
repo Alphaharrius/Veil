@@ -14,7 +14,7 @@ namespace veil::memory {
 
     class Pointer;
 
-    /// The request object as a parameter for allocating a \c Pointer from an \c Allocator.
+    /// The request as a parameter for allocating a \c Pointer from an \c Allocator.
     struct AllocateRequest: public diagnostics::Request {
         /// The byte size of the pointer to be allocated.
         uint32 size;
@@ -23,7 +23,7 @@ namespace veil::memory {
         explicit AllocateRequest(uint32 size): size(size) {}
     };
 
-    /// The request object as a parameter for acquiring a \c Pointer from an \c Allocator.
+    /// The request as a parameter for acquiring a \c Pointer from an \c Allocator.
     struct PointerAcquireRequest: public diagnostics::Request {
         /// The pointer to be acquired.
         Pointer *pointer;
@@ -34,7 +34,7 @@ namespace veil::memory {
         explicit PointerAcquireRequest(Pointer *pointer): pointer(pointer), address(nullptr) {}
     };
 
-    /// The request object as a parameter for releasing a \c Pointer from an \c Allocator.
+    /// The request as a parameter for releasing a \c Pointer from an \c Allocator.
     struct PointerReleaseRequest: public diagnostics::Request {
         /// The pointer to be released.
         Pointer *pointer;
@@ -66,22 +66,30 @@ namespace veil::memory {
         virtual void allocator_release(Allocator &allocator, PointerReleaseRequest &request) = 0;
     };
 
+    // TODO: Add documentations.
     class Pointer {
     public:
+        // TODO: Add documentations.
         uint32 size;
 
     protected:
+        // TODO: Add documentations.
         uint8 *address;
     };
 
+    // TODO: Add documentations.
     class Allocator: public diagnostics::RequestConsumer {
     public:
+        // TODO: Add documentations.
         explicit Allocator(Management &management): management(&management) {}
 
+        // TODO: Add documentations.
         Pointer *allocate(AllocateRequest &request);
 
+        // TODO: Add documentations.
         void acquire(PointerAcquireRequest &request);
 
+        // TODO: Add documentations.
         void release(PointerReleaseRequest &request);
 
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
@@ -92,30 +100,41 @@ namespace veil::memory {
         void operator delete(void *) = delete;
 
     private:
+        // TODO: Add documentations.
         Management *management;
     };
 
+    /// The request as a parameter to initialize the \c Management object.
     struct InitializeManagementRequest: public diagnostics::Request {
+        /// The memory management algorithm to be used in the current \c Management object.
         Algorithm *algorithm;
 
+        /// \param algorithm The memory management algorithm to be used in the current \c Management object.
         explicit InitializeManagementRequest(Algorithm &algorithm) : algorithm(&algorithm) {}
     };
 
+    // TODO: Add documentations.
     class Management {
     public:
         // TODO: Design and implement specification of the constructor.
 
+        // TODO: Add documentations.
         Allocator *create_allocator(diagnostics::Request &request);
 
     private:
+        // TODO: Add documentations.
         Algorithm *algorithm;
 
+        /// The delegate functions for \c Allocator.
         Pointer *allocator_allocate(Allocator &allocator, AllocateRequest &request);
 
+        /// The delegate functions for \c Allocator.
         void allocator_acquire(Allocator &allocator, PointerAcquireRequest &request);
 
+        /// The delegate functions for \c Allocator.
         void allocator_release(Allocator &allocator, PointerReleaseRequest &request);
 
+        // The class Allocator needs to access the delegate functions encapsulating the operations from the algorithm.
         friend class Allocator;
     };
 
