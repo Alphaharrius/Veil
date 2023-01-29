@@ -1,5 +1,5 @@
-#include "util/synchronization.h"
-#include "util/diagnostics.h"
+#include "synchronization.h"
+#include "diagnostics.h"
 
 veil::concurrent::ReentranceMonitor::ReentranceMonitor() {
     this->idle = true;

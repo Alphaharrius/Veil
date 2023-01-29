@@ -1,7 +1,7 @@
 #ifndef VEIL_RUNTIME_H
 #define VEIL_RUNTIME_H
 
-#include "core/heap.h"
+#include "heap.h"
 
 namespace veil {
 

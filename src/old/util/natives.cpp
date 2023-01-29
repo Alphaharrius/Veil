@@ -1,5 +1,5 @@
 #include "natives.h"
-#include "util/diagnostics.h"
+#include "diagnostics.h"
 
 uint32 veil::natives::get_page_size() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)

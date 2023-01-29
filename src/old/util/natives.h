@@ -6,7 +6,7 @@
 #elif defined(__linux__) || defined(__linux) || defined(linux)
 #include <sys/mman.h>
 #endif
-#include "util/type-alias.h"
+#include "type-alias.h"
 
 namespace veil::natives {
 

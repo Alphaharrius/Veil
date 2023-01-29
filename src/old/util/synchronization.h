@@ -6,8 +6,8 @@
 #include <condition_variable>
 #include <atomic>
 
-#include "util/type-alias.h"
-#include "util/runtime-resources.h"
+#include "type-alias.h"
+#include "runtime-resources.h"
 
 namespace veil::concurrent {
     class Synchronizable;
