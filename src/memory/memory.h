@@ -130,8 +130,6 @@ namespace veil::memory {
         // TODO: Add documentations.
         Pointer *allocate(AllocateRequest &request);
 
-        // TODO: Design and implement the method to reserve an allocated pointer.
-
         // TODO: Add documentations.
         void acquire(PointerAcquireRequest &request);
 
