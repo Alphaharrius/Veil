@@ -77,7 +77,13 @@ namespace veil::memory {
         /// \sa \c Pointer
         virtual Pointer *allocator_pointer_allocate(Allocator &allocator, AllocateRequest &request) = 0;
 
-        // TODO: Design and implement the method to reserve an allocated pointer.
+        /// \brief Reserve an unused \c Pointer for future use.
+        /// \attention This method allows the algorithm to implements a infrastructure for efficient \c Pointer reuse
+        /// without full garbage collection. For example stacking unused pointers with allocated memory sector to be
+        /// reused when new acquisition request is made.
+        /// \param allocator The \c Allocator which this operation is performed from.
+        /// \param request   The request of the action.
+        virtual void allocator_pointer_reserve(Allocator &allocator, PointerActionRequest &request) = 0;
 
         /// \brief Acquire the access right to a pointer with exclusive access depends on
         /// \c PointerAcquireRequest::exclusive.
@@ -130,6 +136,9 @@ namespace veil::memory {
         void acquire(PointerAcquireRequest &request);
 
         // TODO: Add documentations.
+        void reserve(PointerActionRequest &request);
+
+        // TODO: Add documentations.
         void release(PointerActionRequest &request);
 
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
@@ -164,15 +173,6 @@ namespace veil::memory {
     private:
         // TODO: Add documentations.
         Algorithm *algorithm;
-
-        /// The delegate functions for \c Allocator.
-        Pointer *allocator_allocate(Allocator &allocator, AllocateRequest &request);
-
-        /// The delegate functions for \c Allocator.
-        void allocator_acquire(Allocator &allocator, PointerAcquireRequest &request);
-
-        /// The delegate functions for \c Allocator.
-        void allocator_release(Allocator &allocator, PointerReleaseRequest &request);
 
         // The class Allocator needs to access the delegate functions encapsulating the operations from the algorithm.
         friend class Allocator;
