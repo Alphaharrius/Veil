@@ -19,7 +19,7 @@ namespace veil::memory {
     void Allocator::reserve(PointerActionRequest &request) {
         static void (Algorithm::*function)(
                 Allocator &allocator,
-                PointerActionRequest &request) = &Algorithm::allocator_pointer_release;
+                PointerActionRequest &request) = &Algorithm::allocator_pointer_reserve;
         (this->management->algorithm->*function)(*this, request);
     }
 
