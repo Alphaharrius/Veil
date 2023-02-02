@@ -52,4 +52,19 @@ namespace veil::memory {
         return (this->algorithm->*function)(*this, request);
     }
 
+    Pointer::Pointer(uint8 *address, uint32 size) : address(address), size(size) {}
+
+    Allocator::Allocator(Management &management) : management(&management) {}
+
+    ManagementInitRequest::ManagementInitRequest(uint64 heap_memory_size, Algorithm *algorithm, void *algorithm_params)
+            : heap_memory_size(heap_memory_size), algorithm(algorithm), algorithm_params(algorithm_params) {
+    }
+
+    AllocateRequest::AllocateRequest(uint32 size) : size(size) {}
+
+    PointerActionRequest::PointerActionRequest(Pointer *pointer) : pointer(pointer) {}
+
+    PointerAcquireRequest::PointerAcquireRequest(
+            Pointer *pointer, bool exclusive) : pointer(pointer), exclusive(exclusive), address(nullptr) {}
+
 }

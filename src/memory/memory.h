@@ -35,13 +35,15 @@ namespace veil::memory {
 
     class Pointer;
 
+    class Algorithm;
+
     /// The request as a parameter for allocating a \c Pointer from an \c Allocator.
     struct AllocateRequest : public util::Request {
         /// The byte size of the pointer to be allocated.
         uint32 size;
 
         /// \param size The byte size of the pointer to be allocated.
-        explicit AllocateRequest(uint32 size) : size(size) {}
+        explicit AllocateRequest(uint32 size);
     };
 
     /// The request as a parameter for acquiring a \c Pointer from an \c Allocator.
@@ -56,9 +58,7 @@ namespace veil::memory {
 
         /// \param pointer   The pointer to be acquired.
         /// \param exclusive Whether the acquisition is exclusive or not, defaults to \c false.
-        explicit PointerAcquireRequest(Pointer *pointer, bool exclusive = false) : pointer(pointer),
-                                                                                   exclusive(exclusive),
-                                                                                   address(nullptr) {}
+        explicit PointerAcquireRequest(Pointer *pointer, bool exclusive = false);
     };
 
     /// The request as a parameter for performing actions to a \c Pointer from an \c Allocator.
@@ -67,7 +67,7 @@ namespace veil::memory {
         Pointer *pointer;
 
         /// \param pointer The pointer to be acted on.
-        explicit PointerActionRequest(Pointer *pointer) : pointer(pointer) {}
+        explicit PointerActionRequest(Pointer *pointer);
     };
 
     /// The request as a parameter to initialize the memory management and provide params for the chosen \c Algorithm.
@@ -75,15 +75,15 @@ namespace veil::memory {
         /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
         /// memory for each of the VM threads.
         uint64 heap_memory_size;
+        /// The memory management algorithm to be used in the current \c Management object.
+        Algorithm *algorithm;
         /// The pointer of the parameters (if any) for the chosen \c Algorithm.
         void *algorithm_params;
 
         /// \param heap_memory_size The maximum utilizable memory managed by the memory management, this includes the
         ///                         heap memory and the stack memory for each of the VM threads.
         /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
-        explicit ManagementInitRequest(
-                uint64 heap_memory_size, void *algorithm_params = nullptr)
-                : heap_memory_size(heap_memory_size), algorithm_params(algorithm_params) {}
+        explicit ManagementInitRequest(uint64 heap_memory_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
@@ -156,7 +156,7 @@ namespace veil::memory {
 
         /// \param address The address (virtual address assigned by the host operating system) of the memory sector.
         /// \param size The byte size of the memory sector.
-        Pointer(uint8 *address, uint32 size) : address(address), size(size) {}
+        Pointer(uint8 *address, uint32 size);
 
     protected:
         /// The address (virtual address assigned by the host operating system) of the memory sector, which can be
@@ -168,7 +168,7 @@ namespace veil::memory {
     class Allocator : public util::RequestConsumer {
     public:
         // TODO: Add documentations.
-        explicit Allocator(Management &management) : management(&management) {}
+        explicit Allocator(Management &management);
 
         // TODO: Add documentations.
         Pointer *allocate(AllocateRequest &request);
