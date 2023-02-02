@@ -49,12 +49,29 @@ namespace veil::memory {
         explicit PointerReleaseRequest(Pointer *pointer) : pointer(pointer) {}
     };
 
+    /// The request as a parameter to initialize the memory management and provide params for the chosen \c Algorithm.
+    struct ManagementInitRequest : public util::Request {
+        /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
+        /// memory for each of the VM threads.
+        uint64 heap_memory_size;
+        /// The pointer of the parameters (if any) for the chosen \c Algorithm.
+        void *algorithm_params;
+
+        /// \param heap_memory_size The maximum utilizable memory managed by the memory management, this includes the
+        ///                         heap memory and the stack memory for each of the VM threads.
+        /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
+        explicit ManagementInitRequest(
+                uint64 heap_memory_size, void *algorithm_params = nullptr)
+                : heap_memory_size(heap_memory_size), algorithm_params(algorithm_params) {}
+    };
+
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
     /// machine. An concrete instance of an algorithm should contain all its architecture, structures and data
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
     class Algorithm : public util::RequestConsumer {
     public:
-        /// TODO: Design and implement the initialization operation.
+        /// TODO: Add documentation.
+        virtual void initialize(ManagementInitRequest &request) = 0;
 
         /// \brief Create an \c Allocator with its parent \c Management.
         /// \attention Since the structure of the \c Allocator is not specified, thus does not contain any necessary
