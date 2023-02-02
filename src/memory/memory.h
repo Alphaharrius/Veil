@@ -194,15 +194,6 @@ namespace veil::memory {
         Management *management;
     };
 
-    /// The request as a parameter to initialize the \c Management object.
-    struct InitializeManagementRequest : public util::Request {
-        /// The memory management algorithm to be used in the current \c Management object.
-        Algorithm *algorithm;
-
-        /// \param algorithm The memory management algorithm to be used in the current \c Management object.
-        explicit InitializeManagementRequest(Algorithm &algorithm) : algorithm(&algorithm) {}
-    };
-
     // TODO: Add documentations.
     class Management {
     public:
