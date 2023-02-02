@@ -41,7 +41,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter for performing actions to a \c Pointer from an \c Allocator.
-    struct PointerActionRequest : public diagnostics::Request {
+    struct PointerActionRequest : public util::Request {
         /// The pointer to be acted on.
         Pointer *pointer;
 
@@ -148,10 +148,10 @@ namespace veil::memory {
         Pointer *allocate(AllocateRequest &request);
 
         // TODO: Add documentations.
-        void acquire(PointerAcquireRequest &request);
+        void reserve(PointerActionRequest &request);
 
         // TODO: Add documentations.
-        void reserve(PointerActionRequest &request);
+        void acquire(PointerAcquireRequest &request);
 
         // TODO: Add documentations.
         void release(PointerActionRequest &request);
