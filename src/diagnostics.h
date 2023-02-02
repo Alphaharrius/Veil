@@ -16,8 +16,10 @@ namespace veil::util {
     public:
         static const uint16 STATUS_OK = 0;
 
-        Request() {
-            this->status = STATUS_OK;
+        Request(): status(STATUS_OK) {}
+
+        [[nodiscard]] bool is_ok() const {
+            return this->status == STATUS_OK;
         }
 
         [[nodiscard]] uint16 get_status() const {
