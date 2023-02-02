@@ -8,7 +8,7 @@
 
 #define not_null(pointer) assert(pointer != nullptr)
 
-namespace veil::diagnostics {
+namespace veil::util {
 
     class RequestConsumer;
 

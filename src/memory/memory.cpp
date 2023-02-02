@@ -14,10 +14,10 @@ namespace veil::memory {
         this->management->allocator_release(*this, request);
     }
 
-    Allocator *Management::create_allocator(diagnostics::Request &request) {
+    Allocator *Management::create_allocator(util::Request &request) {
         static Allocator *(Algorithm::*function)(
                 Management &management,
-                diagnostics::Request &request) = &Algorithm::create_allocator;
+                util::Request &request) = &Algorithm::create_allocator;
         return (this->algorithm->*function)(*this, request);
     }
 

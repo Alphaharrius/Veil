@@ -15,7 +15,7 @@ namespace veil::memory {
     class Pointer;
 
     /// The request as a parameter for allocating a \c Pointer from an \c Allocator.
-    struct AllocateRequest : public diagnostics::Request {
+    struct AllocateRequest : public util::Request {
         /// The byte size of the pointer to be allocated.
         uint32 size;
 
@@ -24,7 +24,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter for acquiring a \c Pointer from an \c Allocator.
-    struct PointerAcquireRequest : public diagnostics::Request {
+    struct PointerAcquireRequest : public util::Request {
         /// The pointer to be acquired.
         Pointer *pointer;
         /// The current address of the pointer, a returned parameter of the request.
@@ -41,7 +41,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter for releasing a \c Pointer from an \c Allocator.
-    struct PointerReleaseRequest : public diagnostics::Request {
+    struct PointerReleaseRequest : public util::Request {
         /// The pointer to be released.
         Pointer *pointer;
 
@@ -52,7 +52,7 @@ namespace veil::memory {
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
     /// machine. An concrete instance of an algorithm should contain all its architecture, structures and data
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
-    class Algorithm : public diagnostics::RequestConsumer {
+    class Algorithm : public util::RequestConsumer {
     public:
         /// TODO: Design and implement the initialization operation.
 
@@ -64,7 +64,7 @@ namespace veil::memory {
         /// \param management The parent \c Management for the creation.
         /// \param request    The request of the action.
         /// \return           An \c Allocator of the provided \a management.
-        virtual Allocator *create_allocator(Management &management, diagnostics::Request &request) = 0;
+        virtual Allocator *create_allocator(Management &management, util::Request &request) = 0;
 
         /// \brief Allocate a memory sector and store the relevant information within a \c Pointer.
         /// \attention Since the structure of the \c Pointer is not specified, thus does not contain any necessary
@@ -116,7 +116,7 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Allocator : public diagnostics::RequestConsumer {
+    class Allocator : public util::RequestConsumer {
     public:
         // TODO: Add documentations.
         explicit Allocator(Management &management) : management(&management) {}
@@ -145,7 +145,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter to initialize the \c Management object.
-    struct InitializeManagementRequest : public diagnostics::Request {
+    struct InitializeManagementRequest : public util::Request {
         /// The memory management algorithm to be used in the current \c Management object.
         Algorithm *algorithm;
 
@@ -159,7 +159,7 @@ namespace veil::memory {
         // TODO: Design and implement specification of the constructor.
 
         // TODO: Add documentations.
-        Allocator *create_allocator(diagnostics::Request &request);
+        Allocator *create_allocator(util::Request &request);
 
     private:
         // TODO: Add documentations.
