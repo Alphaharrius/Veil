@@ -21,8 +21,14 @@
 #include "typedefs.h"
 #include "diagnostics.h"
 
+/// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
+/// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the
+/// memory management algorithm that fulfills the requirement of this template defined in the documentation of
+/// \c memory::Algorithm can be used without affecting the vanilla
+/// behavior of the runtime.
 namespace veil::memory {
 
+    // Forward declaration.
     class Management;
 
     class Allocator;
@@ -83,6 +89,7 @@ namespace veil::memory {
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
     /// machine. An concrete instance of an algorithm should contain all its architecture, structures and data
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
+    /// TODO: Add algorithm implementation requirements.
     class Algorithm : public util::RequestConsumer {
     public:
         /// \brief Initialize the memory management algorithm.
