@@ -40,13 +40,13 @@ namespace veil::memory {
                                                                                    address(nullptr) {}
     };
 
-    /// The request as a parameter for releasing a \c Pointer from an \c Allocator.
-    struct PointerReleaseRequest : public util::Request {
-        /// The pointer to be released.
+    /// The request as a parameter for performing actions to a \c Pointer from an \c Allocator.
+    struct PointerActionRequest : public diagnostics::Request {
+        /// The pointer to be acted on.
         Pointer *pointer;
 
-        /// \param pointer The pointer to be released.
-        explicit PointerReleaseRequest(Pointer *pointer) : pointer(pointer) {}
+        /// \param pointer The pointer to be acted on.
+        explicit PointerActionRequest(Pointer *pointer) : pointer(pointer) {}
     };
 
     /// The request as a parameter to initialize the memory management and provide params for the chosen \c Algorithm.
@@ -92,9 +92,15 @@ namespace veil::memory {
         /// \param request   The request of the action.
         /// \return          An \c Pointer of the memory sector requested by \a request.
         /// \sa \c Pointer
-        virtual Pointer *allocator_allocate(Allocator &allocator, AllocateRequest &request) = 0;
+        virtual Pointer *allocator_pointer_allocate(Allocator &allocator, AllocateRequest &request) = 0;
 
-        // TODO: Design and implement the method to reserve an allocated pointer.
+        /// \brief Reserve an unused \c Pointer for future use.
+        /// \attention This method allows the algorithm to implements a infrastructure for efficient \c Pointer reuse
+        /// without full garbage collection. For example stacking unused pointers with allocated memory sector to be
+        /// reused when new acquisition request is made.
+        /// \param allocator The \c Allocator which this operation is performed from.
+        /// \param request   The request of the action.
+        virtual void allocator_pointer_reserve(Allocator &allocator, PointerActionRequest &request) = 0;
 
         /// \brief Acquire the access right to a pointer with exclusive access depends on
         /// \c PointerAcquireRequest::exclusive.
@@ -105,14 +111,14 @@ namespace veil::memory {
         /// modification of the information stored within the table of \c Pointer.
         /// \param allocator The \c Allocator of the local management.
         /// \param request   The request of the operation.
-        virtual void allocator_acquire(Allocator &allocator, PointerAcquireRequest &request) = 0;
+        virtual void allocator_pointer_acquire(Allocator &allocator, PointerAcquireRequest &request) = 0;
 
         /// \brief Release the access right to a pointer.
         /// \attention If a garbage collector exists in the algorithm, then this function should also deactivate the
         /// concurrent lock or anything equivalent to allow the collector to function within the memory management.
         /// \param allocator The \c Allocator of the local management.
         /// \param request   The request of the operation.
-        virtual void allocator_release(Allocator &allocator, PointerReleaseRequest &request) = 0;
+        virtual void allocator_pointer_release(Allocator &allocator, PointerActionRequest &request) = 0;
     };
 
     /// A \c Pointer represents a static placeholder that stores the address and byte size of the its associated memory
@@ -141,13 +147,14 @@ namespace veil::memory {
         // TODO: Add documentations.
         Pointer *allocate(AllocateRequest &request);
 
-        // TODO: Design and implement the method to reserve an allocated pointer.
-
         // TODO: Add documentations.
         void acquire(PointerAcquireRequest &request);
 
         // TODO: Add documentations.
-        void release(PointerReleaseRequest &request);
+        void reserve(PointerActionRequest &request);
+
+        // TODO: Add documentations.
+        void release(PointerActionRequest &request);
 
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
         /// class is to call the constructor on a memory section with the size of this class.
@@ -181,15 +188,6 @@ namespace veil::memory {
     private:
         // TODO: Add documentations.
         Algorithm *algorithm;
-
-        /// The delegate functions for \c Allocator.
-        Pointer *allocator_allocate(Allocator &allocator, AllocateRequest &request);
-
-        /// The delegate functions for \c Allocator.
-        void allocator_acquire(Allocator &allocator, PointerAcquireRequest &request);
-
-        /// The delegate functions for \c Allocator.
-        void allocator_release(Allocator &allocator, PointerReleaseRequest &request);
 
         // The class Allocator needs to access the delegate functions encapsulating the operations from the algorithm.
         friend class Allocator;
