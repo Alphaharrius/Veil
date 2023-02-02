@@ -70,7 +70,11 @@ namespace veil::memory {
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
     class Algorithm : public util::RequestConsumer {
     public:
-        /// TODO: Add documentation.
+        /// \brief Initialize the memory management algorithm.
+        /// \attention Algorithm specific parameters can be passed with the attribute \c
+        /// ManagementInitRequest::algorithm_params, which a custom structure can be defined and passed as a \c void
+        /// pointer.
+        /// \param request The request of the initialization.
         virtual void initialize(ManagementInitRequest &request) = 0;
 
         /// \brief Create an \c Allocator with its parent \c Management.
