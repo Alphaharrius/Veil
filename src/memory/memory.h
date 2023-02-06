@@ -20,6 +20,7 @@
 
 #include "typedefs.h"
 #include "diagnostics.h"
+#include "resource.h"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
 /// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the
@@ -149,19 +150,12 @@ namespace veil::memory {
 
     /// A \c Pointer represents a static placeholder that stores the address and byte size of the its associated memory
     /// sector.
-    class Pointer {
-    public:
+    struct Pointer {
         /// The byte size of the memory sector, the maximum allowed size of memory sector is 4GiB.
         const uint32 size;
 
-        /// \param address The address (virtual address assigned by the host operating system) of the memory sector.
         /// \param size The byte size of the memory sector.
-        Pointer(uint8 *address, uint32 size);
-
-    protected:
-        /// The address (virtual address assigned by the host operating system) of the memory sector, which can be
-        /// changed dynamically, thus this value is obtained via method \c Allocator::acquire.
-        uint8 *address;
+        explicit Pointer(uint32 size);
     };
 
     // TODO: Add documentations.
@@ -194,20 +188,54 @@ namespace veil::memory {
         Management *management;
     };
 
+    struct MemorySector : Pointer, util::Resource<MemorySector> {
+        const uint8 *address;
+
+        explicit MemorySector(const uint8 *address, uint32 size);
+
+        /// \c MemorySector must be provided by the \c Management directly, the way to instantiate an object of this
+        /// class is to call the constructor on a memory section with the size of this class.
+        void *operator new(size_t size) = delete;
+
+        /// \c MemorySector must be recycled or deleted by it's parent \c Management.
+        void operator delete(void *) = delete;
+    };
+
     // TODO: Add documentations.
     class Management {
     public:
-        // TODO: Design and implement specification of the constructor.
+        // TODO: Add documentations.
+        const uint64 MAX_HEAP_SIZE;
+
+        // TODO: Add documentations.
+        static Management *create(ManagementInitRequest &request);
 
         // TODO: Add documentations.
         Allocator *create_allocator(util::Request &request);
 
     private:
         // TODO: Add documentations.
+        uint64 allocated_heap_size;
+
+        // TODO: Add documentations.
+        Management(ManagementInitRequest &request, void *structure);
+
+        // TODO: Add documentations.
         Algorithm *algorithm;
 
-        // The class Allocator needs to access the delegate functions encapsulating the operations from the algorithm.
+        /// The structure instantiated by the chosen \c Algorithm to store runtime resources for the memory management
+        /// system to function.
+        /// \attention The structure should only be constructed & destructed by the \c Algorithm, which is invoked by
+        ///  the static \c Management::create method.
+        void *structure;
+
+        // TODO: Add documentations.
+        MemorySector *allocate_heap_sector(AllocateRequest &request);
+
+        // The class Allocator needs to access delegate functions encapsulating the operations from the algorithm.
         friend class Allocator;
+        // The class Algorithm needs to access the attribute Management::structure for runtime memory management.
+        friend class Algorithm;
     };
 
 }
