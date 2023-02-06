@@ -56,8 +56,8 @@ namespace veil::memory {
 
     Allocator::Allocator(Management &management) : management(&management) {}
 
-    ManagementInitRequest::ManagementInitRequest(uint64 heap_memory_size, Algorithm *algorithm, void *algorithm_params)
-            : heap_memory_size(heap_memory_size), algorithm(algorithm), algorithm_params(algorithm_params) {
+    ManagementInitRequest::ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params)
+            : max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {
     }
 
     AllocateRequest::AllocateRequest(uint32 size) : size(size) {}

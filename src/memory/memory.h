@@ -74,16 +74,16 @@ namespace veil::memory {
     struct ManagementInitRequest : public util::Request {
         /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
         /// memory for each of the VM threads.
-        uint64 heap_memory_size;
+        uint64 max_heap_size;
         /// The memory management algorithm to be used in the current \c Management object.
         Algorithm *algorithm;
         /// The pointer of the parameters (if any) for the chosen \c Algorithm.
         void *algorithm_params;
 
-        /// \param heap_memory_size The maximum utilizable memory managed by the memory management, this includes the
+        /// \param max_heap_size    The maximum utilizable memory managed by the memory management, this includes the
         ///                         heap memory and the stack memory for each of the VM threads.
         /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
-        explicit ManagementInitRequest(uint64 heap_memory_size, Algorithm *algorithm, void *algorithm_params = nullptr);
+        explicit ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
