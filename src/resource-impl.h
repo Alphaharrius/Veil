@@ -12,8 +12,8 @@ namespace veil::util {
         static_assert(std::is_base_of<Resource<T>, T>::value,
                       "Subclasses `T` of `Resource` must extends `Resource<T>.`");
 
-        this->prev = this;
-        this->next = this;
+        this->prev = static_cast<T *>(this);
+        this->next = static_cast<T *>(this);
     }
 
     template<typename T>
