@@ -202,6 +202,9 @@ namespace veil::memory {
         // TODO: Add documentations.
         void release(PointerActionRequest &request);
 
+        // TODO: Add documentations.
+        const Management *get_management();
+
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
         /// class is to call the constructor on a memory section with the size of this class.
         void *operator new(size_t size) = delete;
@@ -211,7 +214,7 @@ namespace veil::memory {
 
     private:
         // TODO: Add documentations.
-        Management *management;
+        const Management *management;
     };
 
     struct MemorySector : Pointer, util::Resource<MemorySector> {

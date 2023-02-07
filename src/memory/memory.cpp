@@ -65,6 +65,10 @@ namespace veil::memory {
 
     Allocator::Allocator(Management &management) : management(&management) {}
 
+    const Management *Allocator::get_management() {
+        return this->management;
+    }
+
     ManagementInitRequest::ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params)
             : max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {
     }
