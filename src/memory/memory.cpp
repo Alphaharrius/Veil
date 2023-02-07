@@ -61,8 +61,7 @@ namespace veil::memory {
                                                                                           allocated_heap_size(0) {}
 
     void Management::heap_map(HeapMapRequest &request) {
-        uint64 current_allocated_size = natives::atomic_fetch_and_add(&this->allocated_heap_size,
-                                                                      static_cast<uint64>(request.size));
+        uint64 current_allocated_size = this->allocated_heap_size.fetch_add(request.size);
         if (current_allocated_size > this->MAX_HEAP_SIZE) {
             // TODO: Error
         }

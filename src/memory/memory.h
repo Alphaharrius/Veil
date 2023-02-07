@@ -17,6 +17,7 @@
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include <string>
+#include <atomic>
 
 #include "typedefs.h"
 #include "diagnostics.h"
@@ -272,7 +273,7 @@ namespace veil::memory {
 
     private:
         // TODO: Add documentations.
-        volatile uint64 allocated_heap_size;
+        std::atomic_uint64_t allocated_heap_size;
 
         // TODO: Add documentations.
         Management(Algorithm *algorithm, uint64 max_heap_size, void *structure);

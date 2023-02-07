@@ -8,7 +8,6 @@
 
 #include <sys/mman.h>
 #include <unistd.h>
-#include <stdatomic.h>
 
 #endif
 
@@ -21,14 +20,6 @@ namespace veil::natives {
         return static_cast<uint32>(system_info.dwPageSize);
 #       elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
         return (uint32) getpagesize();
-#       endif
-    }
-
-    uint64 atomic_fetch_and_add(volatile uint64 *target, uint64 value) {
-#       if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-        return (uint64) InterlockedAdd64((volatile long long int *) target, (long long int) value);
-#       elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-        return (uint64) atomic_fetch_add(target, value);
 #       endif
     }
 
