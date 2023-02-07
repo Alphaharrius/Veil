@@ -120,6 +120,12 @@ namespace veil::memory {
         /// \param request The request of the termination operation.
         virtual void terminate(util::Request &request) = 0;
 
+        /// \brief The maximum supported heap size of this memory management algorithm implementation.
+        /// \attention The parent \c Management will check this value on initialization, if this value is smaller than
+        /// the user requested size, the VM runtime will be terminated.
+        /// \return The maximum supported heap size.
+        virtual uint64 max_supported_heap_size() = 0;
+
         /// \brief Create an \c Allocator with its parent \c Management.
         /// \attention Since the structure of the \c Allocator is not specified, thus does not contain any necessary
         /// attributes to perform any "local" action. The suggested style of implementing this function is to create a
