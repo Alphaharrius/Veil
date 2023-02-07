@@ -54,10 +54,10 @@ namespace veil::memory {
         return (this->algorithm->*function)(*this, request);
     }
 
-    Management::Management(ManagementInitRequest &request, void *structure) : algorithm(request.algorithm),
-                                                                              MAX_HEAP_SIZE(request.max_heap_size),
-                                                                              structure(structure),
-                                                                              allocated_heap_size(0) {}
+    Management::Management(Algorithm *algorithm, uint64 max_heap_size, void *structure) : algorithm(algorithm),
+                                                                                          MAX_HEAP_SIZE(max_heap_size),
+                                                                                          structure(structure),
+                                                                                          allocated_heap_size(0) {}
 
     Pointer::Pointer(uint32 size) : size(size) {}
 

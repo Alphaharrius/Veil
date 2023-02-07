@@ -218,7 +218,7 @@ namespace veil::memory {
         uint64 allocated_heap_size;
 
         // TODO: Add documentations.
-        Management(ManagementInitRequest &request, void *structure);
+        Management(Algorithm *algorithm, uint64 max_heap_size, void *structure);
 
         // TODO: Add documentations.
         Algorithm *algorithm;
