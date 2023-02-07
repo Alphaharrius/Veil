@@ -184,6 +184,10 @@ namespace veil::memory {
 
     /// A \c Pointer represents a static placeholder that stores the address and byte size of the its associated memory
     /// sector.
+    /// \attention Since the structure of the \c Pointer is not specified, thus does not contain any necessary
+    /// attributes to perform algorithm specific operations. The suggested style of implementing this function is to
+    /// create a subclass of \c Pointer, then define the algorithm specific structures in the subclass, then cast
+    /// into a pointer of \c Pointer as the return object type.
     struct Pointer {
         /// The byte size of the memory sector, the maximum allowed size of memory sector is 4GiB.
         const uint32 size;
@@ -192,25 +196,37 @@ namespace veil::memory {
         explicit Pointer(uint32 size);
     };
 
-    // TODO: Add documentations.
+    /// This class acts as an interface for each thread of the runtime to interact with the memory management, each of
+    /// the thread or it's constituents will hold one (not necessarily separate) instance of this class.
+    /// \attention Since the structure of the \c Allocator is not specified, thus does not contain any necessary
+    /// attributes to perform any "local" action. The suggested style of implementing this function is to create a
+    /// subclass of \c Allocator, then define the algorithm specific structures in the subclass, then cast into a
+    /// pointer of \c Allocator as the return object type.
     class Allocator : public util::RequestConsumer {
     public:
-        // TODO: Add documentations.
+        /// \param management The parent \c Management of this instance.
         explicit Allocator(Management &management);
 
-        // TODO: Add documentations.
+        /// \brief Allocate a memory sector and store the relevant information within a \c Pointer.
+        /// \param request   The request of the action, the maximum allowed size associated with a pointer is 4GiB.
+        /// \return          An \c Pointer of the memory sector requested by \a request.
+        /// \sa \c Pointer
         Pointer *allocate(AllocateRequest &request);
 
-        // TODO: Add documentations.
+        /// \brief Reserve an unused \c Pointer for future use.
+        /// \param request   The request of the action.
         void reserve(PointerActionRequest &request);
 
-        // TODO: Add documentations.
+        /// \brief Acquire the access right to a pointer with exclusive access depends on
+        /// \c PointerAcquireRequest::exclusive.
+        /// \param request   The request of the operation.
         void acquire(PointerAcquireRequest &request);
 
-        // TODO: Add documentations.
+        /// \brief Release the access right to a pointer.
+        /// \param request   The request of the operation.
         void release(PointerActionRequest &request);
 
-        // TODO: Add documentations.
+        /// \return The parent \c Management of this instance.
         const Management *get_management();
 
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
@@ -221,7 +237,7 @@ namespace veil::memory {
         void operator delete(void *) = delete;
 
     private:
-        // TODO: Add documentations.
+        /// The parent \c Management of this instance.
         const Management *management;
     };
 
@@ -277,6 +293,7 @@ namespace veil::memory {
 
         // The class Allocator needs to access delegate functions encapsulating the operations from the algorithm.
         friend class Allocator;
+
         // The class Algorithm needs to access the attribute Management::structure for runtime memory management.
         friend class Algorithm;
     };
