@@ -8,7 +8,7 @@ namespace veil::natives {
 
     uint32 get_page_size();
 
-    uint64 atomic_fetch_and_add(const volatile uint64 *target, uint64 value);
+    uint64 atomic_fetch_and_add(volatile uint64 *target, uint64 value);
 
     template<typename T>
     class NativeAccess {
