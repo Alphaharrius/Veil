@@ -26,7 +26,7 @@ namespace veil::util {
 
     class Request {
     public:
-        static const uint16 STATUS_OK = 0;
+        static const uint32 STATUS_OK = 0;
 
         Request(): status(STATUS_OK) {}
 
@@ -34,7 +34,7 @@ namespace veil::util {
             return this->status == STATUS_OK;
         }
 
-        [[nodiscard]] uint16 get_status() const {
+        [[nodiscard]] uint32 get_status() const {
             return status;
         }
 
