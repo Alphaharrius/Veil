@@ -90,7 +90,22 @@ namespace veil::memory {
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
     /// machine. An concrete instance of an algorithm should contain all its architecture, structures and data
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
-    /// TODO: Add algorithm implementation requirements.
+    /// <br>
+    /// <b>The implementation requirements of the Veil runtime memory management system:</b>
+    /// <ul>
+    ///     <li> An \c Algorithm object must not include implicit attributes, all algorithm-specific runtime data
+    ///          structures must be stored within \c Management::structure. </li>
+    ///     <li> The algorithm must define termination operation for the removal of all its associated sub-routines and
+    ///          data structures within \c Algorithm::terminate which will be invoked by the termination routine of the
+    ///          memory management. </li>
+    ///     <li> The thread synchronization feature of the Veil runtime is provided by the memory management algorithm,
+    ///          this might sounds weird but keep in mind that this feature is inplace to enforce thread-safety of Veil
+    ///          data objects ( \c Pointer ) in the first place. </li>
+    ///     <li> When a \c Pointer is acquired exclusively via \c Algorithm::allocator_pointer_acquire method, the
+    ///          algorithm must initiate a lock operation of the target \c Pointer to enforce thread-safety; otherwise
+    ///          if the acquisition is not exclusive, the algorithm held the final decision on whether the acquisition
+    ///          will be exclusive. </li>
+    /// </ul>
     class Algorithm : public util::RequestConsumer {
     public:
         /// \brief Initialize the memory management algorithm.
