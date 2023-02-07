@@ -16,6 +16,7 @@
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "resource-impl.h"
+#include "natives.h"
 
 namespace veil::memory {
 
@@ -59,9 +60,21 @@ namespace veil::memory {
                                                                                           structure(structure),
                                                                                           allocated_heap_size(0) {}
 
-    Pointer::Pointer(uint32 size) : size(size) {}
+    void Management::heap_map(HeapMapRequest &request) {
+        uint64 current_allocated_size = natives::atomic_fetch_and_add(&this->allocated_heap_size,
+                                                                      static_cast<uint64>(request.size));
+        if (current_allocated_size > this->MAX_HEAP_SIZE) {
+            // TODO: Error
+        }
+        natives::Mmap m(nullptr, request.size, true, true);
+        if (!m.access()) {
+            uint32 error = m.get_error();
+            // TODO: Error
+        }
+        request.address = m.get_result();
+    }
 
-    MemorySector::MemorySector(const uint8 *address, uint32 size) : Pointer(size), address(address) {}
+    Pointer::Pointer(uint32 size) : size(size) {}
 
     Allocator::Allocator(Management &management) : management(&management) {}
 
@@ -73,11 +86,21 @@ namespace veil::memory {
             : max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {
     }
 
-    AllocateRequest::AllocateRequest(uint32 size) : size(size) {}
+    AllocateRequest::AllocateRequest(uint64 size) : size(size) {}
 
     PointerActionRequest::PointerActionRequest(Pointer *pointer) : pointer(pointer) {}
 
     PointerAcquireRequest::PointerAcquireRequest(
             Pointer *pointer, bool exclusive) : pointer(pointer), exclusive(exclusive), address(nullptr) {}
+
+    uint8 *PointerAcquireRequest::get_address() {
+        return this->address;
+    }
+
+    HeapMapRequest::HeapMapRequest(uint64 size) : AllocateRequest(size) {}
+
+    uint8 *HeapMapRequest::get_address() {
+        return this->address;
+    }
 
 }

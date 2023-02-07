@@ -41,25 +41,31 @@ namespace veil::memory {
     /// The request as a parameter for allocating a \c Pointer from an \c Allocator.
     struct AllocateRequest : public util::Request {
         /// The byte size of the pointer to be allocated.
-        uint32 size;
+        const uint64 size;
 
         /// \param size The byte size of the pointer to be allocated.
-        explicit AllocateRequest(uint32 size);
+        explicit AllocateRequest(uint64 size);
     };
 
     /// The request as a parameter for acquiring a \c Pointer from an \c Allocator.
-    struct PointerAcquireRequest : public util::Request {
+    class PointerAcquireRequest : public util::Request {
+    public:
         /// The pointer to be acquired.
-        Pointer *pointer;
-        /// The current address of the pointer, a returned parameter of the request.
-        uint8 *address;
+        const Pointer *pointer;
         /// Whether the acquisition is exclusive or not, please be noted that this value is in suggestion basis, the
         /// underlying algorithm might alter the value according to different situations.
-        bool exclusive;
+        const bool exclusive;
 
         /// \param pointer   The pointer to be acquired.
         /// \param exclusive Whether the acquisition is exclusive or not, defaults to \c false.
         explicit PointerAcquireRequest(Pointer *pointer, bool exclusive = false);
+
+        /// \return The current address of the pointer.
+        uint8 *get_address();
+
+    private:
+        /// The current address of the pointer, a returned parameter of the request.
+        uint8 *address;
     };
 
     /// The request as a parameter for performing actions to a \c Pointer from an \c Allocator.
@@ -105,6 +111,8 @@ namespace veil::memory {
     ///          algorithm must initiate a lock operation of the target \c Pointer to enforce thread-safety; otherwise
     ///          if the acquisition is not exclusive, the algorithm held the final decision on whether the acquisition
     ///          will be exclusive. </li>
+    ///     <li> The maximum memory size associated with a \c Pointer must not exceed 4GiB, allocation larger than this
+    ///          should be handled beyond the management algorithm. </li>
     /// </ul>
     class Algorithm : public util::RequestConsumer {
     public:
@@ -142,7 +150,7 @@ namespace veil::memory {
         /// create a subclass of \c Pointer, then define the algorithm specific structures in the subclass, then cast
         /// into a pointer of \c Pointer as the return object type.
         /// \param allocator The \c Allocator which the new \c Pointer is requested from.
-        /// \param request   The request of the action.
+        /// \param request   The request of the action, the maximum allowed size associated with a pointer is 4GiB.
         /// \return          An \c Pointer of the memory sector requested by \a request.
         /// \sa \c Pointer
         virtual Pointer *allocator_pointer_allocate(Allocator &allocator, AllocateRequest &request) = 0;
@@ -217,17 +225,21 @@ namespace veil::memory {
         const Management *management;
     };
 
-    struct MemorySector : Pointer, util::Resource<MemorySector> {
-        const uint8 *address;
+    /// The request as a parameter to map a heap memory section.
+    class HeapMapRequest : public AllocateRequest {
+    public:
+        /// \return The mapped address.
+        uint8 *get_address();
 
-        explicit MemorySector(const uint8 *address, uint32 size);
+        /// \param size The size of the memory section to be mapped, in 64bit addressing mode.
+        explicit HeapMapRequest(uint64 size);
 
-        /// \c MemorySector must be provided by the \c Management directly, the way to instantiate an object of this
-        /// class is to call the constructor on a memory section with the size of this class.
-        void *operator new(size_t size) = delete;
+    private:
+        /// The mapped address as the returned value.
+        uint8 *address = nullptr;
 
-        /// \c MemorySector must be recycled or deleted by it's parent \c Management.
-        void operator delete(void *) = delete;
+        // Allow modification of the address from the heap_map function call.
+        friend class Management;
     };
 
     // TODO: Add documentations.
@@ -244,7 +256,7 @@ namespace veil::memory {
 
     private:
         // TODO: Add documentations.
-        uint64 allocated_heap_size;
+        volatile uint64 allocated_heap_size;
 
         // TODO: Add documentations.
         Management(Algorithm *algorithm, uint64 max_heap_size, void *structure);
@@ -258,8 +270,10 @@ namespace veil::memory {
         ///  the static \c Management::create method.
         void *structure;
 
-        // TODO: Add documentations.
-        MemorySector *allocate_heap_sector(AllocateRequest &request);
+        /// Map a heap memory section in 64bit swap memory space, the mapped section is permitted to perform
+        /// READ & WRITE operations.
+        /// \param request The request of the mapping.
+        void heap_map(HeapMapRequest &request);
 
         // The class Allocator needs to access delegate functions encapsulating the operations from the algorithm.
         friend class Allocator;
