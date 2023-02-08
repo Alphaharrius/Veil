@@ -66,13 +66,14 @@ namespace veil::memory {
         uint64 current_mapped_size = this->mapped_heap_size.fetch_add(request.size);
         // The total mapped size from the host should not be greater than the limit.
         if (current_mapped_size > this->MAX_HEAP_SIZE) {
-            request.error = memory::ERR_HEAP_OVERFLOW;
+            util::RequestConsumer::set_error(request, memory::ERR_HEAP_OVERFLOW);
             return;
         }
         natives::Mmap m(nullptr, request.size, true, true);
         if (!m.access()) {
             switch (m.get_error()) {
-                case natives::ERR_NOMEM: request.error = memory::ERR_HOST_NOMEM;
+                case natives::ERR_NOMEM:
+                    util::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
             }
             return;
         }
