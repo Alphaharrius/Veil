@@ -117,6 +117,11 @@ namespace veil::memory {
     /// </ul>
     class Algorithm : public util::RequestConsumer {
     public:
+        /// \brief Provides the name of the algorithm.
+        /// \attention This name will be logged by the runtime logger if necessary.
+        /// \return The name of the algorithm.
+        virtual std::string name() = 0;
+
         /// \brief Initialize the memory management algorithm.
         /// \attention Algorithm specific parameters can be passed with the attribute \c
         /// ManagementInitRequest::algorithm_params, which a custom structure can be defined and passed as a \c void
