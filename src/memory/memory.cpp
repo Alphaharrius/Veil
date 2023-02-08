@@ -107,8 +107,7 @@ namespace veil::memory {
         natives::Mmap m(nullptr, request.size, true, true);
         if (!m.access()) {
             switch (m.get_error()) {
-                case natives::ERR_NOMEM:
-                    util::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
+            case natives::ERR_NOMEM:util::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
             }
             return;
         }
