@@ -80,6 +80,11 @@ namespace veil::memory {
         request.address = m.get_result();
     }
 
+    std::string Management::get_error_info(uint32 status) {
+        // TODO: Implement error info retrieval process.
+        return "";
+    }
+
     Pointer::Pointer(uint32 size) : size(size) {}
 
     Allocator::Allocator(Management &management) : management(&management) {}
