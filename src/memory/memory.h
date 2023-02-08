@@ -22,6 +22,7 @@
 #include "typedefs.h"
 #include "diagnostics.h"
 #include "resource.h"
+#include "runtime/runtime.h"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
 /// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the
@@ -281,13 +282,16 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management : util::RequestConsumer {
+    class Management : util::RequestConsumer, RuntimeConstituent {
     public:
         // TODO: Add documentations.
         const uint64 MAX_HEAP_SIZE;
 
-        // TODO: Add documentations.
-        static Management *new_instance(ManagementInitRequest &request);
+        /// \brief Construct a new instance of memory management.
+        /// \param runtime The host runtime where this management belongs.
+        /// \param request The request of the construction.
+        /// \return        The new management instance.
+        static Management *new_instance(Runtime &runtime, ManagementInitRequest &request);
 
         // TODO: Add documentations.
         Allocator *create_allocator(util::Request &request);
@@ -300,7 +304,7 @@ namespace veil::memory {
         std::atomic_uint64_t mapped_heap_size;
 
         // TODO: Add documentations.
-        Management(Algorithm *algorithm, uint64 max_heap_size);
+        Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size);
 
         ~Management() = default;
 

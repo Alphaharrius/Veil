@@ -61,7 +61,7 @@ namespace veil::memory {
         return (this->algorithm->*function)(*this, request);
     }
 
-    Management *Management::new_instance(ManagementInitRequest &request) {
+    Management *Management::new_instance(Runtime &runtime, ManagementInitRequest &request) {
         if (!request.algorithm) {
             util::RequestConsumer::set_error(request, memory::ERR_NO_ALGO);
             return nullptr;
@@ -77,7 +77,7 @@ namespace veil::memory {
             return nullptr;
         }
 
-        auto *management = new Management(request.algorithm, request.max_heap_size);
+        auto *management = new Management(runtime, request.algorithm, request.max_heap_size);
 
         AlgorithmInitRequest algo_request(management, request.max_heap_size, request.algorithm_params);
         request.algorithm->initialize(algo_request);
@@ -91,10 +91,11 @@ namespace veil::memory {
         return management;
     }
 
-    Management::Management(Algorithm *algorithm, uint64 max_heap_size) : MAX_HEAP_SIZE(max_heap_size),
-                                                                         algorithm(algorithm),
-                                                                         mapped_heap_size(0),
-                                                                         structure(nullptr) {}
+    Management::Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size) : RuntimeConstituent(runtime),
+                                                                                           MAX_HEAP_SIZE(max_heap_size),
+                                                                                           algorithm(algorithm),
+                                                                                           mapped_heap_size(0),
+                                                                                           structure(nullptr) {}
 
     void Management::heap_map(HeapMapRequest &request) {
         // Increment atomically by the request size.
@@ -121,8 +122,11 @@ namespace veil::memory {
 
     Pointer::Pointer(uint32 size) : size(size) {}
 
-    ManagementInitRequest::ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params)
-            : max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {}
+    ManagementInitRequest::ManagementInitRequest(
+            uint64 max_heap_size,
+            Algorithm *algorithm,
+            void *algorithm_params) :
+            max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {}
 
     AllocateRequest::AllocateRequest(uint64 size) : size(size) {}
 

@@ -11,4 +11,5 @@ add_executable(
         src/memory/memory.h src/memory/memory.cpp
         src/natives.h src/natives.cpp
         src/resource.h src/resource-impl.h
-        src/errors.h)
+        src/errors.h
+        src/runtime/runtime.cpp src/runtime/runtime.h)
