@@ -19,6 +19,7 @@
 #include <string>
 
 #include "typedefs.h"
+#include "errors.h"
 
 namespace veil::util {
 
@@ -26,27 +27,26 @@ namespace veil::util {
 
     class Request {
     public:
-        static const uint32 STATUS_OK = 0;
 
-        Request(): status(STATUS_OK) {}
+        Request(): error(ERR_NONE) {}
 
         [[nodiscard]] bool is_ok() const {
-            return this->status == STATUS_OK;
+            return this->error == ERR_NONE;
         }
 
-        [[nodiscard]] uint32 get_status() const {
-            return status;
+        [[nodiscard]] uint32 get_error() const {
+            return error;
         }
 
     protected:
-        uint16 status;
+        uint32 error;
 
         friend class RequestConsumer;
     };
 
     class RequestConsumer {
     public:
-        virtual std::string get_status_information(uint16 status) = 0;
+        virtual std::string get_error_info(uint32 status) = 0;
     };
 
 }

@@ -3,4 +3,12 @@ project(Veil)
 
 set(CMAKE_CXX_STANDARD 17)
 include_directories("src")
-add_executable(Veil main.cpp src/typedefs.h src/memory/memory.h src/diagnostics.h src/memory/memory.cpp src/natives.h src/natives.cpp src/natives.cpp src/natives.h src/resource.h src/resource-impl.h)
+add_executable(
+        Veil
+        main.cpp
+        src/typedefs.h
+        src/diagnostics.h
+        src/memory/memory.h src/memory/memory.cpp
+        src/natives.h src/natives.cpp
+        src/resource.h src/resource-impl.h
+        src/errors.h)

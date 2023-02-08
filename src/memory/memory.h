@@ -273,7 +273,7 @@ namespace veil::memory {
 
     private:
         // TODO: Add documentations.
-        std::atomic_uint64_t allocated_heap_size;
+        std::atomic_uint64_t mapped_heap_size;
 
         // TODO: Add documentations.
         Management(Algorithm *algorithm, uint64 max_heap_size, void *structure);

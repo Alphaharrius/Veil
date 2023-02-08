@@ -34,8 +34,6 @@ namespace veil::natives {
 
     class Mmap : public NativeAccess<uint8 *> {
     public:
-        static const uint32 ERR_NOMEM = 1;
-
         Mmap(void *address, uint64 size, bool readwrite, bool reserve);
 
         bool access() override;

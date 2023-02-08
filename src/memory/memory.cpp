@@ -1,4 +1,5 @@
 #include "memory/memory.h"
+#include "errors.h"
 
 /// This file is part of the Veil distribution (https://github.com/Alphaharrius/Veil).
 /// Copyright (c) 2023 Alphaharrius.
@@ -58,17 +59,22 @@ namespace veil::memory {
     Management::Management(Algorithm *algorithm, uint64 max_heap_size, void *structure) : algorithm(algorithm),
                                                                                           MAX_HEAP_SIZE(max_heap_size),
                                                                                           structure(structure),
-                                                                                          allocated_heap_size(0) {}
+                                                                                          mapped_heap_size(0) {}
 
     void Management::heap_map(HeapMapRequest &request) {
-        uint64 current_allocated_size = this->allocated_heap_size.fetch_add(request.size);
-        if (current_allocated_size > this->MAX_HEAP_SIZE) {
-            // TODO: Error
+        // Increment atomically by the request size.
+        uint64 current_mapped_size = this->mapped_heap_size.fetch_add(request.size);
+        // The total mapped size from the host should not be greater than the limit.
+        if (current_mapped_size > this->MAX_HEAP_SIZE) {
+            request.error = memory::ERR_HEAP_OVERFLOW;
+            return;
         }
         natives::Mmap m(nullptr, request.size, true, true);
         if (!m.access()) {
-            uint32 error = m.get_error();
-            // TODO: Error
+            switch (m.get_error()) {
+                case natives::ERR_NOMEM: request.error = memory::ERR_HOST_NOMEM;
+            }
+            return;
         }
         request.address = m.get_result();
     }
