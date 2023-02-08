@@ -25,6 +25,10 @@ namespace veil::memory {
     static const uint32 ERR_HEAP_OVERFLOW = 1;
     static const uint32 ERR_HOST_NOMEM = 2;
 
+    static const uint32 ERR_INV_HEAP_SIZE = 3;
+    static const uint32 ERR_NO_ALGO = 4;
+    static const uint32 ERR_ALGO_INIT = 5;
+
 }
 
 #endif //VEIL_ERRORS_H

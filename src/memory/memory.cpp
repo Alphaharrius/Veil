@@ -56,10 +56,40 @@ namespace veil::memory {
         return (this->algorithm->*function)(*this, request);
     }
 
-    Management::Management(Algorithm *algorithm, uint64 max_heap_size, void *structure) : algorithm(algorithm),
-                                                                                          MAX_HEAP_SIZE(max_heap_size),
-                                                                                          structure(structure),
-                                                                                          mapped_heap_size(0) {}
+    Management *Management::new_instance(ManagementInitRequest &request) {
+        if (!request.algorithm) {
+            util::RequestConsumer::set_error(request, memory::ERR_NO_ALGO);
+            return nullptr;
+        }
+
+        uint32 host_page_size = natives::get_page_size();
+        // Ensure that the max heap size is a multiple of the host page size.
+        uint64 max_heap_size = request.max_heap_size % host_page_size ?
+                               request.max_heap_size + host_page_size : request.max_heap_size;
+        // Ensure the adjusted max heap size is supported by the algorithm.
+        if (max_heap_size > request.algorithm->max_supported_heap_size()) {
+            util::RequestConsumer::set_error(request, memory::ERR_INV_HEAP_SIZE);
+            return nullptr;
+        }
+
+        auto *management = new Management(request.algorithm, request.max_heap_size);
+
+        AlgorithmInitRequest algo_request(management, request.max_heap_size, request.algorithm_params);
+        request.algorithm->initialize(algo_request);
+        if (!algo_request.is_ok()) {
+            // The management object can be deleted directly as the only injected allocated memory is stored within
+            // Management::structure, which is not allocated in case of failure.
+            delete management;
+            util::RequestConsumer::set_error(request, algo_request.get_error());
+            return nullptr;
+        }
+        return management;
+    }
+
+    Management::Management(Algorithm *algorithm, uint64 max_heap_size) : MAX_HEAP_SIZE(max_heap_size),
+                                                                         algorithm(algorithm),
+                                                                         mapped_heap_size(0),
+                                                                         structure(nullptr) {}
 
     void Management::heap_map(HeapMapRequest &request) {
         // Increment atomically by the request size.
@@ -113,5 +143,10 @@ namespace veil::memory {
     uint8 *HeapMapRequest::get_address() {
         return this->address;
     }
+
+    AlgorithmInitRequest::AlgorithmInitRequest(Management *management, uint64 max_heap_size, void *algorithm_params) :
+            management(management),
+            max_heap_size(max_heap_size),
+            algorithm_params(algorithm_params) {}
 
 }

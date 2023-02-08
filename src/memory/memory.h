@@ -94,6 +94,22 @@ namespace veil::memory {
         explicit ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
+    struct AlgorithmInitRequest : util::Request {
+        /// The premature \c Management object to be initialized by the chosen \c Algorithm to install
+        /// algorithm-specific structures.
+        Management *management;
+        /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
+        /// memory for each of the VM threads.
+        uint64 max_heap_size;
+        /// The pointer of the parameters (if any) for the chosen \c Algorithm.
+        void *algorithm_params;
+
+        /// \param management       The premature \c Management object to be initialized by the chosen \c Algorithm.
+        /// \param max_heap_size    The maximum utilizable memory managed by the memory management.
+        /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
+        AlgorithmInitRequest(Management *management, uint64 max_heap_size, void *algorithm_params);
+    };
+
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
     /// machine. An concrete instance of an algorithm should contain all its architecture, structures and data
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
@@ -127,7 +143,7 @@ namespace veil::memory {
         /// ManagementInitRequest::algorithm_params, which a custom structure can be defined and passed as a \c void
         /// pointer.
         /// \param request The request of the initialization.
-        virtual void initialize(ManagementInitRequest &request) = 0;
+        virtual void initialize(AlgorithmInitRequest &request) = 0;
 
         /// \brief Terminate all the implicit algorithm-specific sub-routines and delete all implicit algorithm-specific
         /// data structures within the memory management.
@@ -265,13 +281,13 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management {
+    class Management : util::RequestConsumer {
     public:
         // TODO: Add documentations.
         const uint64 MAX_HEAP_SIZE;
 
         // TODO: Add documentations.
-        static Management *create(ManagementInitRequest &request);
+        static Management *new_instance(ManagementInitRequest &request);
 
         // TODO: Add documentations.
         Allocator *create_allocator(util::Request &request);
@@ -284,7 +300,9 @@ namespace veil::memory {
         std::atomic_uint64_t mapped_heap_size;
 
         // TODO: Add documentations.
-        Management(Algorithm *algorithm, uint64 max_heap_size, void *structure);
+        Management(Algorithm *algorithm, uint64 max_heap_size);
+
+        ~Management() = default;
 
         // TODO: Add documentations.
         Algorithm *algorithm;
