@@ -49,6 +49,12 @@ namespace veil::memory {
         (this->management->algorithm->*function)(*this, request);
     }
 
+    const Management *Allocator::get_management() {
+        return this->management;
+    }
+
+    Allocator::Allocator(Management &management) : management(&management) {}
+
     Allocator *Management::create_allocator(util::Request &request) {
         static Allocator *(Algorithm::*function)(
                 Management &management,
@@ -117,15 +123,8 @@ namespace veil::memory {
 
     Pointer::Pointer(uint32 size) : size(size) {}
 
-    Allocator::Allocator(Management &management) : management(&management) {}
-
-    const Management *Allocator::get_management() {
-        return this->management;
-    }
-
     ManagementInitRequest::ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params)
-            : max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {
-    }
+            : max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {}
 
     AllocateRequest::AllocateRequest(uint64 size) : size(size) {}
 
