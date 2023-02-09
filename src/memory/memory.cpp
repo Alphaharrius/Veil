@@ -91,11 +91,12 @@ namespace veil::memory {
         return management;
     }
 
-    Management::Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size) : RuntimeConstituent(runtime),
-                                                                                           MAX_HEAP_SIZE(max_heap_size),
-                                                                                           algorithm(algorithm),
-                                                                                           mapped_heap_size(0),
-                                                                                           structure(nullptr) {}
+    Management::Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size) :
+            util::Constituent<Runtime>(runtime),
+            MAX_HEAP_SIZE(max_heap_size),
+            algorithm(algorithm),
+            mapped_heap_size(0),
+            structure(nullptr) {}
 
     void Management::heap_map(HeapMapRequest &request) {
         // Increment atomically by the request size.

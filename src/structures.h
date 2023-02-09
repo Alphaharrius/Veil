@@ -1,5 +1,5 @@
-#ifndef VEIL_DIAGNOSTICS_H
-#define VEIL_DIAGNOSTICS_H
+#ifndef VEIL_STRUCTURES_H
+#define VEIL_STRUCTURES_H
 
 /// This file is part of the Veil distribution (https://github.com/Alphaharrius/Veil).
 /// Copyright (c) 2023 Alphaharrius.
@@ -54,6 +54,26 @@ namespace veil::util {
         }
     };
 
+    template <class P>
+    class Constituent {
+    public:
+        P *get_parent();
+
+    protected:
+        explicit Constituent(P &parent);
+
+    private:
+        const P *parent;
+    };
+
+    template<class P>
+    P *Constituent<P>::get_parent() {
+        return this->parent;
+    }
+
+    template<class P>
+    Constituent<P>::Constituent(P &parent) : parent(&parent) {}
+
 }
 
-#endif //VEIL_DIAGNOSTICS_H
+#endif //VEIL_STRUCTURES_H

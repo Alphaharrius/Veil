@@ -2,7 +2,7 @@
 #define VEIL_NATIVES_H
 
 #include "typedefs.h"
-#include "diagnostics.h"
+#include "structures.h"
 
 namespace veil::natives {
 

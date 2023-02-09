@@ -20,7 +20,7 @@
 #include <atomic>
 
 #include "typedefs.h"
-#include "diagnostics.h"
+#include "structures.h"
 #include "resource.h"
 #include "runtime/runtime.h"
 
@@ -282,7 +282,7 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management : util::RequestConsumer, RuntimeConstituent {
+    class Management : util::RequestConsumer, util::Constituent<Runtime> {
     public:
         // TODO: Add documentations.
         const uint64 MAX_HEAP_SIZE;

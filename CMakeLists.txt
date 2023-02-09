@@ -7,7 +7,7 @@ add_executable(
         Veil
         main.cpp
         src/typedefs.h
-        src/diagnostics.h
+        src/structures.h
         src/memory/memory.h src/memory/memory.cpp
         src/natives.h src/natives.cpp
         src/resource.h src/resource-impl.h
