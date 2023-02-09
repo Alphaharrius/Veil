@@ -12,4 +12,5 @@ add_executable(
         src/natives.h src/natives.cpp
         src/resource.h
         src/errors.h
-        src/runtime/runtime.cpp src/runtime/runtime.h)
+        src/runtime/runtime.cpp src/runtime/runtime.h
+        src/threading/sync.cpp src/threading/sync.h)
