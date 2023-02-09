@@ -225,7 +225,7 @@ namespace veil::memory {
     /// attributes to perform any "local" action. The suggested style of implementing this function is to create a
     /// subclass of \c Allocator, then define the algorithm specific structures in the subclass, then cast into a
     /// pointer of \c Allocator as the return object type.
-    class Allocator : public util::RequestConsumer {
+    class Allocator : public util::RequestConsumer, util::Constituent<Management> {
     public:
         /// \param management The parent \c Management of this instance.
         explicit Allocator(Management &management);
@@ -258,10 +258,6 @@ namespace veil::memory {
 
         /// The allocator must be recycled or deleted by it's parent \c Management.
         void operator delete(void *) = delete;
-
-    private:
-        /// The parent \c Management of this instance.
-        const Management *management;
     };
 
     /// The request as a parameter to map a heap memory section.

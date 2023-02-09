@@ -60,10 +60,9 @@ namespace veil::util {
         P *get_parent();
 
     protected:
-        explicit Constituent(P &parent);
-
-    private:
         const P *parent;
+
+        explicit Constituent(P &parent);
     };
 
     template<class P>
