@@ -249,9 +249,6 @@ namespace veil::memory {
         /// \param request   The request of the operation.
         void release(PointerActionRequest &request);
 
-        /// \return The parent \c Management of this instance.
-        const Management *get_management();
-
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
         /// class is to call the constructor on a memory section with the size of this class.
         void *operator new(size_t size) = delete;
