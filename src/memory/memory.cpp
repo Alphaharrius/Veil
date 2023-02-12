@@ -24,28 +24,28 @@ namespace veil::memory {
         static Pointer *(Algorithm::*function)(
                 Allocator &allocator,
                 AllocateRequest &request) = &Algorithm::allocator_pointer_allocate;
-        return (this->parent->algorithm->*function)(*this, request);
+        return (this->root->algorithm->*function)(*this, request);
     }
 
     void Allocator::acquire(PointerAcquireRequest &request) {
         static void (Algorithm::*function)(
                 Allocator &allocator,
                 PointerAcquireRequest &request) = &Algorithm::allocator_pointer_acquire;
-        (this->parent->algorithm->*function)(*this, request);
+        (this->root->algorithm->*function)(*this, request);
     }
 
     void Allocator::reserve(PointerActionRequest &request) {
         static void (Algorithm::*function)(
                 Allocator &allocator,
                 PointerActionRequest &request) = &Algorithm::allocator_pointer_reserve;
-        (this->parent->algorithm->*function)(*this, request);
+        (this->root->algorithm->*function)(*this, request);
     }
 
     void Allocator::release(PointerActionRequest &request) {
         static void (Algorithm::*function)(
                 Allocator &allocator,
                 PointerActionRequest &request) = &Algorithm::allocator_pointer_release;
-        (this->parent->algorithm->*function)(*this, request);
+        (this->root->algorithm->*function)(*this, request);
     }
 
     Allocator::Allocator(Management &management) : util::Constituent<Management>(management) {}

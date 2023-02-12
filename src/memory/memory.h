@@ -152,17 +152,17 @@ namespace veil::memory {
         virtual void terminate(util::Request &request) = 0;
 
         /// \brief The maximum supported heap size of this memory management algorithm implementation.
-        /// \attention The parent \c Management will check this value on initialization, if this value is smaller than
+        /// \attention The root \c Management will check this value on initialization, if this value is smaller than
         /// the user requested size, the VM runtime will be terminated.
         /// \return The maximum supported heap size.
         virtual uint64 max_supported_heap_size() = 0;
 
-        /// \brief Create an \c Allocator with its parent \c Management.
+        /// \brief Create an \c Allocator with its root \c Management.
         /// \attention Since the structure of the \c Allocator is not specified, thus does not contain any necessary
         /// attributes to perform any "local" action. The suggested style of implementing this function is to create a
         /// subclass of \c Allocator, then define the algorithm specific structures in the subclass, then cast into a
         /// pointer of \c Allocator as the return object type.
-        /// \param management The parent \c Management for the creation.
+        /// \param management The root \c Management for the creation.
         /// \param request    The request of the action.
         /// \return           An \c Allocator of the provided \a management.
         virtual Allocator *create_allocator(Management &management, util::Request &request) = 0;
@@ -190,7 +190,7 @@ namespace veil::memory {
         /// \c PointerAcquireRequest::exclusive.
         /// \attention Since the attribute \c PointerAcquireRequest::exclusive is suggestive, thus the underlying
         /// algorithm can decide whether to exercise the request if the value is set \c false; but a request with value
-        /// set to \c true must acquire the pointer exclusively. If a garbage collector exists in the algorithm, then
+        /// set to \c true must wait the pointer exclusively. If a garbage collector exists in the algorithm, then
         /// this function should also activate the concurrent lock or anything equivalent to prevent concurrent
         /// modification of the information stored within the table of \c Pointer.
         /// \param allocator The \c Allocator of the local management.
@@ -227,7 +227,7 @@ namespace veil::memory {
     /// pointer of \c Allocator as the return object type.
     class Allocator : public util::RequestConsumer, util::Constituent<Management> {
     public:
-        /// \param management The parent \c Management of this instance.
+        /// \param management The root \c Management of this instance.
         explicit Allocator(Management &management);
 
         /// \brief Allocate a memory sector and store the relevant information within a \c Pointer.
@@ -253,7 +253,7 @@ namespace veil::memory {
         /// class is to call the constructor on a memory section with the size of this class.
         void *operator new(size_t size) = delete;
 
-        /// The allocator must be recycled or deleted by it's parent \c Management.
+        /// The allocator must be recycled or deleted by it's root \c Management.
         void operator delete(void *) = delete;
     };
 
