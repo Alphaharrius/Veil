@@ -1,5 +1,3 @@
 #include "runtime.h"
 
-namespace veil {
-
-}
+using namespace veil;
