@@ -29,7 +29,7 @@
 
 using namespace veil::natives;
 
-uint32 get_page_size() {
+uint32 veil::natives::get_page_size() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     _SYSTEM_INFO system_info{};
     GetSystemInfo(&system_info);
