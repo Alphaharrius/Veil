@@ -1,10 +1,10 @@
 #ifndef VEIL_HEAP_H
 #define VEIL_HEAP_H
 
-#include "old/util/runtime-resources.h"
-#include "old/util/type-alias.h"
-#include "old/util/synchronization.h"
-#include "old/util/natives.h"
+#include "../util/runtime-resources.h"
+#include "../util/type-alias.h"
+#include "../util/synchronization.h"
+#include "../util/natives.h"
 
 namespace veil {
 

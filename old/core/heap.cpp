@@ -1,6 +1,6 @@
 #include "heap.h"
-#include "old/util/natives.h"
-#include "old/util/diagnostics.h"
+#include "../util/natives.h"
+#include "../util/diagnostics.h"
 
 uint8 *veil::HeapSection::allocate(uint32 request_size) {
     // NOTE: The operations are not atomic thus is not thread-safe, but an allocation
