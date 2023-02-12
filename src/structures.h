@@ -54,24 +54,24 @@ namespace veil::util {
         }
     };
 
-    template <class P>
+    template <class R>
     class Constituent {
     public:
-        P *get_parent();
+        R *get_root();
 
     protected:
-        const P *parent;
+        const R *root;
 
-        explicit Constituent(P &parent);
+        explicit Constituent(R &root);
     };
 
     template<class P>
-    P *Constituent<P>::get_parent() {
-        return this->parent;
+    P *Constituent<P>::get_root() {
+        return this->root;
     }
 
     template<class P>
-    Constituent<P>::Constituent(P &parent) : parent(&parent) {}
+    Constituent<P>::Constituent(P &root) : root(&root) {}
 
 }
 
