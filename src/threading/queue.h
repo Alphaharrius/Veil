@@ -20,6 +20,8 @@ namespace veil::threading {
 
     class Queuee {
     public:
+        static const uint32 MAX_SPIN_COUNT = 128;
+
         Queuee();
 
         void queue(Queue &queue);

@@ -13,6 +13,14 @@ void Queuee::queue(Queue &queue) {
         return;
     }
 
+    // Spinning for MAX_SPIN_COUNT amount of time to see if the queue is available before using the full process of
+    // queue acquisition. This will save some CPU resources in a contested situation.
+    // TODO: The value of MAX_SPIN_COUNT must be profiled and updated to a more suitable value.
+    for (uint32 spin_count = 0; queue.last_queuee.load() != nullptr && spin_count < MAX_SPIN_COUNT; spin_count++) {
+        // Prevent compiler optimization at level o3.
+        asm volatile ("");
+    }
+
     // The current queue is active and waited in a queue.
     this->idle = false;
 
