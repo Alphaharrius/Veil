@@ -13,4 +13,4 @@ add_executable(
         src/resource.h
         src/errors.h
         src/runtime/runtime.cpp src/runtime/runtime.h
-        src/threading/sync.cpp src/threading/sync.h)
+        src/threading/queue.cpp src/threading/queue.h)
