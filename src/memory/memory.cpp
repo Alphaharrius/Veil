@@ -1,6 +1,3 @@
-#include "memory/memory.h"
-#include "errors.h"
-
 /// This file is part of the Veil distribution (https://github.com/Alphaharrius/Veil).
 /// Copyright (c) 2023 Alphaharrius.
 ///
@@ -16,6 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "memory/memory.h"
+#include "errors.h"
 #include "natives.h"
 
 using namespace veil::memory;

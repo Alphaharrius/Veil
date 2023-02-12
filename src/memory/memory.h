@@ -1,6 +1,3 @@
-#ifndef VEIL_MEMORY_H
-#define VEIL_MEMORY_H
-
 /// This file is part of the Veil distribution (https://github.com/Alphaharrius/Veil).
 /// Copyright (c) 2023 Alphaharrius.
 ///
@@ -15,6 +12,9 @@
 ///
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef VEIL_MEMORY_H
+#define VEIL_MEMORY_H
 
 #include <string>
 #include <atomic>
