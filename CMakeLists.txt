@@ -18,7 +18,7 @@ add_executable(
 
 add_executable(
         threading_queue_test
-        src/threading/threading_queue_test.cpp
+        src/threading/queue_test.cpp
         src/typedefs.h
         src/resource.h
         src/structures.h
