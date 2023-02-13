@@ -20,40 +20,25 @@
 using namespace veil::memory;
 
 Pointer *Allocator::allocate(AllocateRequest &request) {
-    static Pointer *(Algorithm::*function)(
-            Allocator &allocator,
-            AllocateRequest &request) = &Algorithm::allocator_pointer_allocate;
-    return (this->root->algorithm->*function)(*this, request);
+    return this->root->algorithm->allocator_pointer_allocate(*this, request);
 }
 
 void Allocator::acquire(PointerAcquireRequest &request) {
-    static void (Algorithm::*function)(
-            Allocator &allocator,
-            PointerAcquireRequest &request) = &Algorithm::allocator_pointer_acquire;
-    (this->root->algorithm->*function)(*this, request);
+    this->root->algorithm->allocator_pointer_acquire(*this, request);
 }
 
 void Allocator::reserve(PointerActionRequest &request) {
-    static void (Algorithm::*function)(
-            Allocator &allocator,
-            PointerActionRequest &request) = &Algorithm::allocator_pointer_reserve;
-    (this->root->algorithm->*function)(*this, request);
+    this->root->algorithm->allocator_pointer_reserve(*this, request);
 }
 
 void Allocator::release(PointerActionRequest &request) {
-    static void (Algorithm::*function)(
-            Allocator &allocator,
-            PointerActionRequest &request) = &Algorithm::allocator_pointer_release;
-    (this->root->algorithm->*function)(*this, request);
+    this->root->algorithm->allocator_pointer_release(*this, request);
 }
 
 Allocator::Allocator(Management &management) : util::Constituent<Management>(management) {}
 
 Allocator *Management::create_allocator(util::Request &request) {
-    static Allocator *(Algorithm::*function)(
-            Management &management,
-            util::Request &request) = &Algorithm::create_allocator;
-    return (this->algorithm->*function)(*this, request);
+    return this->algorithm->create_allocator(*this, request);
 }
 
 Management *Management::new_instance(Runtime &runtime, ManagementInitRequest &request) {
@@ -104,7 +89,8 @@ void Management::heap_map(HeapMapRequest &request) {
     natives::Mmap m(nullptr, request.size, true, true);
     if (!m.access()) {
         switch (m.get_error()) {
-        case natives::ERR_NOMEM:util::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
+            case natives::ERR_NOMEM:
+                util::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
         }
         return;
     }
