@@ -35,7 +35,7 @@ namespace veil::threading {
 
     class Queuee {
     public:
-        static const uint32 MAX_SPIN_COUNT = 128;
+        static const uint32 MAX_SPIN_COUNT = 32;
 
         static const uint8 STAT_IDLE = 0;
         static const uint8 STAT_QUEUE = 1;
@@ -58,6 +58,9 @@ namespace veil::threading {
         bool exit_queue;
         bool queuee_notified;
 
+        uint32 spin_success_count = 0;
+        uint32 contested_count = 0;
+
         friend class QueueClient;
     };
 
@@ -65,9 +68,9 @@ namespace veil::threading {
     public:
         QueueClient();
 
-        void wait(Queue &mutex);
+        void wait(Queue &target);
 
-        void exit(Queue &mutex);
+        void exit(Queue &target);
 
     private:
         uint32 nested_level;

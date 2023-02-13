@@ -48,7 +48,7 @@ namespace veil::util {
     template<typename T>
     T *Storage<T>::expand() {
         if (this->buffered_count == this->buffer_len) {
-            auto *new_buffer = new T[this->buffer_len * 1.5f];
+            auto *new_buffer = new T[(uint32) (this->buffer_len * 1.5f)];
             memcpy(new_buffer, this->buffer, this->buffered_count);
             delete[] this->buffer;
             this->buffer = new_buffer;

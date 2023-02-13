@@ -40,6 +40,7 @@ void Queuee::queue(Queue &queue) {
             // Using atomic compare exchange to acquire the queue if it returns to empty state within the spin period.
             Queuee *null_queuee = nullptr;
             if (queue.last_queuee.compare_exchange_strong(null_queuee, this)) {
+                this->spin_success_count++;
                 // We can skip all subsequent procedure in acquiring the queue, this prevents all forms of thread
                 // blocking which would be resource intensive.
                 goto Acquire;
@@ -53,6 +54,7 @@ void Queuee::queue(Queue &queue) {
         // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is
         // the first owner, and is allowed to proceed without blocking on the condition variable.
         if (last_queuee != nullptr) {
+            this->contested_count++;
             // The current queue is active and waited in a queue.
             this->status = STAT_QUEUE;
             std::unique_lock<std::mutex> m_lock(last_queuee->blocking_m);
@@ -120,16 +122,16 @@ bool Queuee::exit(Queue &queue) {
 
 QueueClient::QueueClient() : nested_level(0) {}
 
-void QueueClient::wait(Queue &queue) {
+void QueueClient::wait(Queue &target) {
     Queuee *reentrance = nullptr;
     Queuee *available = nullptr;
     // The amount of previously instantiated queuee in storage.
     uint32 queuee_count = this->get_top_index();
-    // The purpose of this loop is to look for queuee that have been queued on the queue to be queued (reentrance), or
-    // to look for a reusable queuee from another completed queue operation.
+    // The purpose of this loop is to look for queuee that have been queued on the target to be queued (reentrance), or
+    // to look for a reusable queuee from another completed target operation.
     for (int queuee_index = 0;
          queuee_index < queuee_count &&
-         // Added for optimization. nested_level != 0 indicates this monitor have waited on some queue before the
+         // Added for optimization. nested_level != 0 indicates this monitor have waited on some target before the
          // current wait operation, and should continue searching for the reentrance queuee if possible; else, when an
          // available queuee is found then the search is successful.
          (available == nullptr || this->nested_level != 0) &&
@@ -139,7 +141,7 @@ void QueueClient::wait(Queue &queue) {
         // Reusable queuee will be marked as idle.
         if (current->status == Queuee::STAT_IDLE) available = current;
             // The queuee to reentry
-        else if (current->target == &queue) reentrance = current;
+        else if (current->target == &target) reentrance = current;
     }
     if (reentrance != nullptr) available = reentrance;
 
@@ -149,23 +151,23 @@ void QueueClient::wait(Queue &queue) {
         // Instantiate the new queuee.
         new(available) Queuee();
     }
-    available->queue(queue);
+    available->queue(target);
     this->nested_level++;
 }
 
-void QueueClient::exit(Queue &queue) {
-    // Return if the client hasn't wait on any queue.
+void QueueClient::exit(Queue &target) {
+    // Return if the client hasn't wait on any target.
     if (this->nested_level == 0) return;
 
     // The amount of previously instantiated queuee in storage.
     uint32 queuee_count = this->get_top_index();
     for (int queue_index = 0; queue_index < queuee_count; queue_index++) {
         Queuee *current = this->get(queue_index);
-        // Search for the child queuee which have acquired the target queue, the first occurrence will also be the only
+        // Search for the child queuee which have acquired the target target, the first occurrence will also be the only
         // occurrence as QueueClient::wait ensured all reentrance behavior to be focused into a single queuee. The only
         // occurrence will also be in STAT_ACQUIRE as this operation will not be reached it is still in STAT_QUEUE, in
         // other words the thread of this client is still in blocking state.
-        if (current->exit(queue)) {
+        if (current->exit(target)) {
             // Decrement the nested level upon all successful or reentrance release.
             this->nested_level--;
             // No need to go on further.
