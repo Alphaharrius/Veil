@@ -17,16 +17,19 @@
 
 using namespace veil::threading;
 
-Queuee::Queuee() : idle(true), reentrance_count(0), owned(nullptr), exit_queue(false), queuee_notified(false) {}
+Queuee::Queuee() : status(STAT_IDLE), reentrance_count(0), target(nullptr), exit_queue(false), queuee_notified(false) {}
 
 void Queuee::queue(Queue &queue) {
     // Check if the current queuee queues to on the same queue it have been queued, if so the current acquire can be
     // considered as a reentrance behavior, increment the reentrance count and exit the method. It is enforced that the
     // root client will assign the reentrance acquire operation to the queuee that have acquired the same target.
-    if (!this->idle && this->owned != nullptr && this->owned == &queue) {
+    if (this->status != STAT_IDLE && this->target == &queue) {
         this->reentrance_count++;
         return;
     }
+
+    // Mark the target queuee.
+    this->target = &queue;
 
     // Spinning for MAX_SPIN_COUNT amount of time to see if the queue is available before using the full process of
     // queue acquisition. This will save some CPU resources in a contested situation.
@@ -37,13 +40,13 @@ void Queuee::queue(Queue &queue) {
     }
 
     // The current queue is active and waited in a queue.
-    this->idle = false;
+    this->status = STAT_QUEUE;
 
     // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
     // competing monitor will queue behind the top queuee.
     Queuee *last_queuee = queue.last_queuee.exchange(this);
-    // If the last queuee monitor is nullptr, it implies that the queue has yet to be owned and this queuee is the first
-    // owner, and is allowed to proceed without blocking on the condition variable.
+    // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is the
+    // first owner, and is allowed to proceed without blocking on the condition variable.
     if (last_queuee != nullptr) {
         std::unique_lock<std::mutex> m_lock(last_queuee->blocking_m);
         while (!last_queuee->exit_queue) {
@@ -58,18 +61,18 @@ void Queuee::queue(Queue &queue) {
     }
 
     // At this stage this queuee have fully acquired the queue object.
-    this->owned = &queue;
+    this->status = STAT_ACQUIRE;
 }
 
 bool Queuee::exit(Queue &queue) {
-    // Return the method directly if the queue to exit from does not match with the owned queue as exiting before
+    // Return the method directly if the queue to exit from does not match with the target queue as exiting before
     // owning a target will result in a blocking as this procedure tries to notify a non-existing queuee behind.
-    if (&queue != this->owned) {
+    if (&queue != this->target) {
         // Trivial action.
         return false;
     }
 
-    // The check above ensured the queue to exit from is the owned queue, this check ensured the queue have been
+    // The check above ensured the queue to exit from is the target queue, this check ensured the queue have been
     // queued for more than once, thus we can decrement the reentrance count and safely exit this operation.
     // NOTE: We will execute the complex procedure beneath only when this count is 0, which is the actual exit from
     // the queue.
@@ -97,11 +100,50 @@ bool Queuee::exit(Queue &queue) {
     }
 
     // Reset the queuee attributes to prepare for another fresh start.
-    this->idle = true;
-    this->owned = nullptr;
+    this->status = STAT_IDLE;
+    this->target = nullptr;
     this->exit_queue = false;
     this->queuee_notified = false;
 
     // Exiting successfully.
     return true;
+}
+
+QueueClient::QueueClient() : nested_level(0) {}
+
+void QueueClient::wait(Queue &queue) {
+    Queuee *reentrance = nullptr;
+    Queuee *available = nullptr;
+    // The amount of previously instantiated queuee in storage.
+    uint32 queuee_count = this->get_top_index();
+    // The purpose of this loop is to look for queuee that have been queued on the queue to be queued (reentrance), or
+    // to look for a reusable queuee from another completed queue operation.
+    for (int queuee_index = 0;
+         queuee_index < queuee_count &&
+         // Added for optimization. nested_level != 0 indicates this monitor have waited on some queue before the
+         // current wait operation, and should continue searching for the reentrance queuee if possible; else, when an
+         // available queuee is found then the search is successful.
+         (available == nullptr || this->nested_level != 0) &&
+         reentrance == nullptr;
+         queuee_index++) {
+        Queuee *current = this->get(queuee_index);
+        // Reusable queuee will be marked as idle.
+        if (current->status == Queuee::STAT_IDLE) available = current;
+            // The queuee to reentry
+        else if (current->target == &queue) reentrance = current;
+    }
+    if (reentrance != nullptr) available = reentrance;
+
+    // Add a new queuee if no reusable queuee is found.
+    if (available == nullptr) {
+        available = this->expand();
+        // Instantiate the new queuee.
+        new(available) Queuee();
+    }
+    available->queue(queue);
+    this->nested_level++;
+}
+
+void QueueClient::exit(Queue &mutex) {
+
 }

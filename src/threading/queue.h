@@ -37,6 +37,10 @@ namespace veil::threading {
     public:
         static const uint32 MAX_SPIN_COUNT = 128;
 
+        static const uint8 STAT_IDLE = 0;
+        static const uint8 STAT_QUEUE = 1;
+        static const uint8 STAT_ACQUIRE = 2;
+
         Queuee();
 
         void queue(Queue &queue);
@@ -44,19 +48,23 @@ namespace veil::threading {
         bool exit(Queue &queue);
 
     private:
-        bool idle;
+        uint8 status;
         uint32 reentrance_count;
-        Queue *owned;
+        Queue *target;
 
         std::mutex blocking_m;
         std::condition_variable blocking_cv;
 
         bool exit_queue;
         bool queuee_notified;
+
+        friend class QueueClient;
     };
 
-    class QueueClient : private util::Storage<Queuee *> {
+    class QueueClient : private util::Storage<Queuee> {
     public:
+        QueueClient();
+
         void wait(Queue &mutex);
 
         void exit(Queue &mutex);
