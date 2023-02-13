@@ -31,35 +31,44 @@ void Queuee::queue(Queue &queue) {
     // Mark the target queuee.
     this->target = &queue;
 
-    // Spinning for MAX_SPIN_COUNT amount of time to see if the queue is available before using the full process of
-    // queue acquisition. This will save some CPU resources in a contested situation.
-    // TODO: The value of MAX_SPIN_COUNT must be profiled and updated to a more suitable value.
-    for (uint32 spin_count = 0; queue.last_queuee.load() != nullptr && spin_count < MAX_SPIN_COUNT; spin_count++) {
-        // Prevent compiler optimization at level o3.
-        asm volatile ("");
-    }
-
-    // The current queue is active and waited in a queue.
-    this->status = STAT_QUEUE;
-
-    // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
-    // competing monitor will queue behind the top queuee.
-    Queuee *last_queuee = queue.last_queuee.exchange(this);
-    // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is the
-    // first owner, and is allowed to proceed without blocking on the condition variable.
-    if (last_queuee != nullptr) {
-        std::unique_lock<std::mutex> m_lock(last_queuee->blocking_m);
-        while (!last_queuee->exit_queue) {
-            // Wait until the last queuee signals the exit of the queue, and check for the valid wakeup condition to
-            // prevent spurious wakeup.
-            last_queuee->blocking_cv.wait(m_lock);
+    // Check if the queue has queuee, enters the spin process if there is.
+    if (queue.last_queuee.load() != nullptr)
+        // Spinning for MAX_SPIN_COUNT amount of time to see if the queue is available before using the full process of
+        // queue acquisition. This will save some CPU resources in a contested situation.
+        // TODO: The value of MAX_SPIN_COUNT must be profiled and updated to a more suitable value.
+        for (uint32 spin_count = 0; spin_count < MAX_SPIN_COUNT; spin_count++) {
+            // Using atomic compare exchange to acquire the queue if it returns to empty state within the spin period.
+            Queuee *null_queuee = nullptr;
+            if (queue.last_queuee.compare_exchange_strong(null_queuee, this)) {
+                // We can skip all subsequent procedure in acquiring the queue, this prevents all forms of thread
+                // blocking which would be resource intensive.
+                goto Acquire;
+            }
         }
-        // Signal the last queuee that this queuee have been queuee_notified and resume in queue acquisition. The exit
-        // procedure of the last queuee will check if this flag is set before exiting its looping call to exit the
-        // current queuee.
-        last_queuee->queuee_notified = true;
+
+    {
+        // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
+        // competing monitor will queue behind the top queuee.
+        Queuee *last_queuee = queue.last_queuee.exchange(this);
+        // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is
+        // the first owner, and is allowed to proceed without blocking on the condition variable.
+        if (last_queuee != nullptr) {
+            // The current queue is active and waited in a queue.
+            this->status = STAT_QUEUE;
+            std::unique_lock<std::mutex> m_lock(last_queuee->blocking_m);
+            while (!last_queuee->exit_queue) {
+                // Wait until the last queuee signals the exit of the queue, and check for the valid wakeup condition to
+                // prevent spurious wakeup.
+                last_queuee->blocking_cv.wait(m_lock);
+            }
+            // Signal the last queuee that this queuee have been queuee_notified and resume in queue acquisition. The
+            // exit procedure of the last queuee will check if this flag is set before exiting its looping call to exit
+            // the current queuee.
+            last_queuee->queuee_notified = true;
+        }
     }
 
+    Acquire:
     // At this stage this queuee have fully acquired the queue object.
     this->status = STAT_ACQUIRE;
 }
@@ -144,6 +153,23 @@ void QueueClient::wait(Queue &queue) {
     this->nested_level++;
 }
 
-void QueueClient::exit(Queue &mutex) {
+void QueueClient::exit(Queue &queue) {
+    // Return if the client hasn't wait on any queue.
+    if (this->nested_level == 0) return;
 
+    // The amount of previously instantiated queuee in storage.
+    uint32 queuee_count = this->get_top_index();
+    for (int queue_index = 0; queue_index < queuee_count; queue_index++) {
+        Queuee *current = this->get(queue_index);
+        // Search for the child queuee which have acquired the target queue, the first occurrence will also be the only
+        // occurrence as QueueClient::wait ensured all reentrance behavior to be focused into a single queuee. The only
+        // occurrence will also be in STAT_ACQUIRE as this operation will not be reached it is still in STAT_QUEUE, in
+        // other words the thread of this client is still in blocking state.
+        if (current->exit(queue)) {
+            // Decrement the nested level upon all successful or reentrance release.
+            this->nested_level--;
+            // No need to go on further.
+            break;
+        }
+    }
 }
