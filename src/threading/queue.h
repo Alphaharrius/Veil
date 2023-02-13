@@ -58,9 +58,6 @@ namespace veil::threading {
         bool exit_queue;
         bool queuee_notified;
 
-        uint32 spin_success_count = 0;
-        uint32 contested_count = 0;
-
         friend class QueueClient;
     };
 

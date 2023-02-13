@@ -40,7 +40,6 @@ void Queuee::queue(Queue &queue) {
             // Using atomic compare exchange to acquire the queue if it returns to empty state within the spin period.
             Queuee *null_queuee = nullptr;
             if (queue.last_queuee.compare_exchange_strong(null_queuee, this)) {
-                this->spin_success_count++;
                 // We can skip all subsequent procedure in acquiring the queue, this prevents all forms of thread
                 // blocking which would be resource intensive.
                 goto Acquire;
@@ -54,7 +53,6 @@ void Queuee::queue(Queue &queue) {
         // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is
         // the first owner, and is allowed to proceed without blocking on the condition variable.
         if (last_queuee != nullptr) {
-            this->contested_count++;
             // The current queue is active and waited in a queue.
             this->status = STAT_QUEUE;
             std::unique_lock<std::mutex> m_lock(last_queuee->blocking_m);
