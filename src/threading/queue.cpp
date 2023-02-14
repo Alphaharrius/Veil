@@ -161,7 +161,7 @@ void QueueClient::exit(Queue &target) {
     uint32 queuee_count = this->get_top_index();
     for (int queue_index = 0; queue_index < queuee_count; queue_index++) {
         Queuee *current = this->get(queue_index);
-        // Search for the child queuee which have acquired the target target, the first occurrence will also be the only
+        // Search for the child queuee which have acquired the target queue, the first occurrence will also be the only
         // occurrence as QueueClient::wait ensured all reentrance behavior to be focused into a single queuee. The only
         // occurrence will also be in STAT_ACQUIRE as this operation will not be reached it is still in STAT_QUEUE, in
         // other words the thread of this client is still in blocking state.
