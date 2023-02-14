@@ -13,10 +13,10 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_ERRORS_H
-#define VEIL_ERRORS_H
+#ifndef VEIL_ERRORS_HPP
+#define VEIL_ERRORS_HPP
 
-#include "typedefs.h"
+#include "typedefs.hpp"
 
 // The error handling approach of the Veil runtime is to use error codes confined to their resultant namespace level,
 // each level will map the error code from the previous level to their own error code. This header is used side by side
@@ -46,4 +46,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_ERRORS_H
+#endif //VEIL_ERRORS_HPP

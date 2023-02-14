@@ -13,14 +13,14 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_QUEUE_H
-#define VEIL_QUEUE_H
+#ifndef VEIL_QUEUE_HPP
+#define VEIL_QUEUE_HPP
 
 #include <atomic>
 #include <condition_variable>
 
-#include "typedefs.h"
-#include "resource.h"
+#include "typedefs.hpp"
+#include "vm/resource.hpp"
 
 namespace veil::threading {
 
@@ -61,7 +61,7 @@ namespace veil::threading {
         friend class QueueClient;
     };
 
-    class QueueClient : private util::Storage<Queuee> {
+    class QueueClient : private vm::Storage<Queuee> {
     public:
         QueueClient();
 
@@ -75,4 +75,4 @@ namespace veil::threading {
 
 }
 
-#endif //VEIL_QUEUE_H
+#endif //VEIL_QUEUE_HPP

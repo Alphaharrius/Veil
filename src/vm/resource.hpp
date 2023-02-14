@@ -13,10 +13,10 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_RESOURCE_H
-#define VEIL_RESOURCE_H
+#ifndef VEIL_RESOURCE_HPP
+#define VEIL_RESOURCE_HPP
 
-namespace veil::util {
+namespace veil::vm {
 
     template<typename T>
     class Storage {
@@ -60,6 +60,7 @@ namespace veil::util {
     uint32 Storage<T>::get_top_index() {
         return this->buffered_count;
     }
+
 }
 
-#endif //VEIL_RESOURCE_H
+#endif //VEIL_RESOURCE_HPP

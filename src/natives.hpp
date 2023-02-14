@@ -13,11 +13,11 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_NATIVES_H
-#define VEIL_NATIVES_H
+#ifndef VEIL_NATIVES_HPP
+#define VEIL_NATIVES_HPP
 
-#include "typedefs.h"
-#include "structures.h"
+#include "typedefs.hpp"
+#include "vm/structures.hpp"
 
 namespace veil::natives {
 
@@ -61,4 +61,4 @@ namespace veil::natives {
 
 }
 
-#endif //VEIL_NATIVES_H
+#endif //VEIL_NATIVES_HPP

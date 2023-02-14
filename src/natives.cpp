@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "natives.h"
-#include "errors.h"
+#include "natives.hpp"
+#include "errors.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 

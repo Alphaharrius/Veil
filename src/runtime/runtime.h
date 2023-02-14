@@ -16,7 +16,7 @@
 #ifndef VEIL_RUNTIME_H
 #define VEIL_RUNTIME_H
 
-#include "typedefs.h"
+#include "typedefs.hpp"
 
 namespace veil {
     

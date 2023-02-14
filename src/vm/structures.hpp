@@ -13,15 +13,15 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_STRUCTURES_H
-#define VEIL_STRUCTURES_H
+#ifndef VEIL_STRUCTURES_HPP
+#define VEIL_STRUCTURES_HPP
 
 #include <string>
 
-#include "typedefs.h"
-#include "errors.h"
+#include "typedefs.hpp"
+#include "errors.hpp"
 
-namespace veil::util {
+namespace veil::vm {
 
     class RequestConsumer;
 
@@ -75,4 +75,4 @@ namespace veil::util {
 
 }
 
-#endif //VEIL_STRUCTURES_H
+#endif //VEIL_STRUCTURES_HPP

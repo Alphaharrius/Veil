@@ -6,21 +6,21 @@ include_directories("src")
 add_executable(
         Veil
         main.cpp
-        src/typedefs.h
-        src/structures.h
-        src/memory/memory.h src/memory/memory.cpp
-        src/natives.h src/natives.cpp
-        src/resource.h
-        src/errors.h
+        src/typedefs.hpp
+        src/vm/structures.hpp
+        src/memory/memory.hpp src/memory/memory.cpp
+        src/natives.hpp src/natives.cpp
+        src/vm/resource.hpp
+        src/errors.hpp
         src/runtime/runtime.cpp src/runtime/runtime.h
-        src/threading/queue.cpp src/threading/queue.h
+        src/threading/queue.cpp src/threading/queue.hpp
 )
 
 add_executable(
         threading_queue_test
         src/threading/queue_test.cpp
-        src/typedefs.h
-        src/resource.h
-        src/structures.h
-        src/threading/queue.h src/threading/queue.cpp
+        src/typedefs.hpp
+        src/vm/resource.hpp
+        src/vm/structures.hpp
+        src/threading/queue.hpp src/threading/queue.cpp
 )

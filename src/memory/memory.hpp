@@ -13,15 +13,15 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_MEMORY_H
-#define VEIL_MEMORY_H
+#ifndef VEIL_MEMORY_HPP
+#define VEIL_MEMORY_HPP
 
 #include <string>
 #include <atomic>
 
-#include "typedefs.h"
-#include "structures.h"
-#include "resource.h"
+#include "typedefs.hpp"
+#include "vm/structures.hpp"
+#include "vm/resource.hpp"
 #include "runtime/runtime.h"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
@@ -41,7 +41,7 @@ namespace veil::memory {
     class Algorithm;
 
     /// The request as a parameter for allocating a \c Pointer from an \c Allocator.
-    struct AllocateRequest : public util::Request {
+    struct AllocateRequest : public vm::Request {
         /// The byte size of the pointer to be allocated.
         const uint64 size;
 
@@ -50,7 +50,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter for acquiring a \c Pointer from an \c Allocator.
-    class PointerAcquireRequest : public util::Request {
+    class PointerAcquireRequest : public vm::Request {
     public:
         /// The pointer to be acquired.
         const Pointer *pointer;
@@ -71,7 +71,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter for performing actions to a \c Pointer from an \c Allocator.
-    struct PointerActionRequest : public util::Request {
+    struct PointerActionRequest : public vm::Request {
         /// The pointer to be acted on.
         Pointer *pointer;
 
@@ -80,7 +80,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter to initialize the memory management and provide params for the chosen \c Algorithm.
-    struct ManagementInitRequest : public util::Request {
+    struct ManagementInitRequest : public vm::Request {
         /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
         /// memory for each of the VM threads.
         uint64 max_heap_size;
@@ -95,7 +95,7 @@ namespace veil::memory {
         explicit ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
-    struct AlgorithmInitRequest : util::Request {
+    struct AlgorithmInitRequest : vm::Request {
         /// The premature \c Management object to be initialized by the chosen \c Algorithm to install
         /// algorithm-specific structures.
         Management *management;
@@ -132,7 +132,7 @@ namespace veil::memory {
     ///     <li> The maximum memory size associated with a \c Pointer must not exceed 4GiB, allocation larger than this
     ///          should be handled beyond the management algorithm. </li>
     /// </ul>
-    class Algorithm : public util::RequestConsumer {
+    class Algorithm : public vm::RequestConsumer {
     public:
         /// \brief Provides the name of the algorithm.
         /// \attention This name will be logged by the runtime logger if necessary.
@@ -149,7 +149,7 @@ namespace veil::memory {
         /// \brief Terminate all the implicit algorithm-specific sub-routines and delete all implicit algorithm-specific
         /// data structures within the memory management.
         /// \param request The request of the termination operation.
-        virtual void terminate(util::Request &request) = 0;
+        virtual void terminate(vm::Request &request) = 0;
 
         /// \brief The maximum supported heap size of this memory management algorithm implementation.
         /// \attention The root \c Management will check this value on initialization, if this value is smaller than
@@ -165,7 +165,7 @@ namespace veil::memory {
         /// \param management The root \c Management for the creation.
         /// \param request    The request of the action.
         /// \return           An \c Allocator of the provided \a management.
-        virtual Allocator *create_allocator(Management &management, util::Request &request) = 0;
+        virtual Allocator *create_allocator(Management &management, vm::Request &request) = 0;
 
         /// \brief Allocate a memory sector and store the relevant information within a \c Pointer.
         /// \attention Since the structure of the \c Pointer is not specified, thus does not contain any necessary
@@ -225,7 +225,7 @@ namespace veil::memory {
     /// attributes to perform any "local" action. The suggested style of implementing this function is to create a
     /// subclass of \c Allocator, then define the algorithm specific structures in the subclass, then cast into a
     /// pointer of \c Allocator as the return object type.
-    class Allocator : public util::RequestConsumer, util::Constituent<Management> {
+    class Allocator : public vm::RequestConsumer, vm::Constituent<Management> {
     public:
         /// \param management The root \c Management of this instance.
         explicit Allocator(Management &management);
@@ -275,7 +275,7 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management : util::RequestConsumer, util::Constituent<Runtime> {
+    class Management : vm::RequestConsumer, vm::Constituent<Runtime> {
     public:
         // TODO: Add documentations.
         const uint64 MAX_HEAP_SIZE;
@@ -287,7 +287,7 @@ namespace veil::memory {
         static Management *new_instance(Runtime &runtime, ManagementInitRequest &request);
 
         // TODO: Add documentations.
-        Allocator *create_allocator(util::Request &request);
+        Allocator *create_allocator(vm::Request &request);
 
         // TODO: Add documentations.
         std::string get_error_info(uint32 status) override;
@@ -324,4 +324,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_MEMORY_H
+#endif //VEIL_MEMORY_HPP
