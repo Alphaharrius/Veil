@@ -20,12 +20,13 @@
 
 #include "typedefs.hpp"
 #include "errors.hpp"
+#include "memory/memory.hpp"
 
 namespace veil::vm {
 
     class RequestConsumer;
 
-    class Request {
+    class Request : public memory::ValueObject {
     public:
 
         Request(): error(ERR_NONE) {}

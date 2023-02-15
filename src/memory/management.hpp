@@ -132,7 +132,7 @@ namespace veil::memory {
     ///     <li> The maximum memory size associated with a \c Pointer must not exceed 4GiB, allocation larger than this
     ///          should be handled beyond the management algorithm. </li>
     /// </ul>
-    class Algorithm : public vm::RequestConsumer {
+    class Algorithm : public vm::RequestConsumer, public memory::ValueObject {
     public:
         /// \brief Provides the name of the algorithm.
         /// \attention This name will be logged by the runtime logger if necessary.
@@ -275,7 +275,7 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management : vm::RequestConsumer, vm::Constituent<Runtime> {
+    class Management : vm::RequestConsumer, vm::Constituent<Runtime>, memory::ValueObject {
     public:
         // TODO: Add documentations.
         const uint64 MAX_HEAP_SIZE;

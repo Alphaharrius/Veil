@@ -4,11 +4,11 @@
 
 using namespace veil::memory;
 
-void *VMObject::operator new(unsigned long long int size) {
+void *HeapObject::operator new(unsigned long long int size) {
     return os::malloc(size);
 }
 
-void VMObject::operator delete(void *address) {
+void HeapObject::operator delete(void *address) {
     os::free(address);
 }
 

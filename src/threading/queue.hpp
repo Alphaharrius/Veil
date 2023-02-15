@@ -26,14 +26,14 @@ namespace veil::threading {
 
     class Queuee;
 
-    class Queue {
+    class Queue { // TODO: The type of object of a queue is yet to be decided.
     private:
         std::atomic<Queuee *> last_queuee =  std::atomic<Queuee *>(nullptr);
 
         friend class Queuee;
     };
 
-    class Queuee {
+    class Queuee : memory::ArenaObject {
     public:
         static const uint32 MAX_SPIN_COUNT = 32;
 

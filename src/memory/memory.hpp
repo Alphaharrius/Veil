@@ -8,18 +8,28 @@ namespace veil::memory {
 
     class Region;
 
-    class VMObject {
+    class HeapObject {
     public:
         void *operator new(unsigned long long size);
-
         void operator delete(void *address);
 
         void *operator new[](unsigned long long size) = delete;
-
         void operator delete[](void *address) = delete;
     };
 
-    class Arena {
+     class ValueObject {
+     public:
+         void *operator new(unsigned long long size) = delete;
+         void operator delete(void *address) = delete;
+
+         void *operator new[](unsigned long long size) = delete;
+         void operator delete[](void *address) = delete;
+     };
+
+     class ArenaObject {
+     };
+
+    class Arena : public ValueObject {
     public:
         class Iterator;
 
@@ -40,7 +50,7 @@ namespace veil::memory {
         friend class Arena::Iterator;
     };
 
-    class Region : public VMObject {
+    class Region : public HeapObject {
     public:
 
         explicit Region(uint32 pool_size);
@@ -60,14 +70,11 @@ namespace veil::memory {
         friend class Arena::Iterator;
     };
 
-    class Arena::Iterator {
+    class Arena::Iterator : public ValueObject {
     public:
         explicit Iterator(Arena &arena);
 
         void *next(uint64 step);
-
-        void *operator new(unsigned long long size) = delete;
-        void operator delete(void *address) = delete;
 
     private:
         Region *target;
@@ -78,7 +85,7 @@ namespace veil::memory {
     class TArenaIterator;
 
     template<typename T>
-    class TArena {
+    class TArena : public ValueObject {
     public:
         static const uint32 DEFAULT_POOL_LEN = 64;
 
@@ -109,7 +116,7 @@ namespace veil::memory {
     void TArena<T>::free() { this->embedded.free(); }
 
     template <typename T>
-    class TArenaIterator : Arena::Iterator {
+    class TArenaIterator : public Arena::Iterator {
     public:
         explicit TArenaIterator(TArena<T> &arena);
 
