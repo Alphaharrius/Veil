@@ -1,5 +1,5 @@
-#ifndef VEIL_MEMORY_HPP
-#define VEIL_MEMORY_HPP
+#ifndef VEIL_SRC_MEMORY_MEMORY_HPP
+#define VEIL_SRC_MEMORY_MEMORY_HPP
 
 #include "typedefs.hpp"
 
@@ -135,4 +135,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_MEMORY_HPP
+#endif //VEIL_SRC_MEMORY_MEMORY_HPP
