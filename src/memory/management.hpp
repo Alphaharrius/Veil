@@ -22,7 +22,7 @@
 #include "typedefs.hpp"
 #include "vm/structures.hpp"
 #include "vm/resource.hpp"
-#include "runtime/runtime.h"
+#include "core/runtime.h"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
 /// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the
