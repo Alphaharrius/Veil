@@ -23,11 +23,16 @@
 
 namespace veil::os {
 
-    uint8 *malloc(uint32 size, uint32 &error);
+    void *malloc(uint64 size);
+
+    void free(void *address);
 
     uint32 get_page_size();
 
-    uint8 *mmap(void *address, uint64 size, bool readwrite, bool reserve, uint32 &error);
+    void *mmap(void *address, uint64 size, bool readwrite, bool reserve, uint32 &error);
+
+    void force_exit_on_error(
+            const std::string& reason, std::string& filename, std::string& function_name, uint32 line_number);
 
 }
 
