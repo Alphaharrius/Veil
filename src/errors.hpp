@@ -29,7 +29,7 @@ namespace veil {
 
 }
 
-namespace veil::natives {
+namespace veil::os {
 
     static const uint32 ERR_NOMEM = 1;
 

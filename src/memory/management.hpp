@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_MEMORY_HPP
-#define VEIL_MEMORY_HPP
+#ifndef VEIL_MANAGEMENT_HPP
+#define VEIL_MANAGEMENT_HPP
 
 #include <string>
 #include <atomic>
@@ -114,7 +114,7 @@ namespace veil::memory {
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
     /// machine. An concrete instance of an algorithm should contain all its architecture, structures and data
     /// implicitly, only provides the methods for accessing memory management feature specified in this interface.
-    /// <br>
+    /// <br><br>
     /// <b>The implementation requirements of the Veil runtime memory management system:</b>
     /// <ul>
     ///     <li> An \c Algorithm object must not include implicit attributes, all algorithm-specific runtime data
@@ -324,4 +324,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_MEMORY_HPP
+#endif //VEIL_MANAGEMENT_HPP

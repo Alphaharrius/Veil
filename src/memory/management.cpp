@@ -13,9 +13,9 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "memory/memory.hpp"
+#include "memory/management.hpp"
 #include "errors.hpp"
-#include "natives.hpp"
+#include "os.hpp"
 
 using namespace veil::memory;
 
@@ -47,7 +47,7 @@ Management *Management::new_instance(Runtime &runtime, ManagementInitRequest &re
         return nullptr;
     }
 
-    uint32 host_page_size = natives::get_page_size();
+    uint32 host_page_size = os::get_page_size();
     // Ensure that the max heap size is a multiple of the host page size.
     uint64 max_heap_size = request.max_heap_size % host_page_size ?
                            request.max_heap_size + host_page_size : request.max_heap_size;
@@ -86,15 +86,13 @@ void Management::heap_map(HeapMapRequest &request) {
         vm::RequestConsumer::set_error(request, memory::ERR_HEAP_OVERFLOW);
         return;
     }
-    natives::Mmap m(nullptr, request.size, true, true);
-    if (!m.access()) {
-        switch (m.get_error()) {
-            case natives::ERR_NOMEM:
-                vm::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
-        }
-        return;
+    uint32 error;
+    request.address = os::mmap(nullptr, request.size, true, true, error);
+    switch (error) {
+    case os::ERR_NOMEM: vm::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
+    case veil::ERR_NONE:
+    default: break;
     }
-    request.address = m.get_result();
 }
 
 std::string Management::get_error_info(uint32 status) {
