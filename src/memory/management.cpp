@@ -87,7 +87,7 @@ void Management::heap_map(HeapMapRequest &request) {
         return;
     }
     uint32 error;
-    request.address = os::mmap(nullptr, request.size, true, true, error);
+    request.address = static_cast<uint8 *>(os::mmap(nullptr, request.size, true, true, error));
     switch (error) {
     case os::ERR_NOMEM: vm::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
     case veil::ERR_NONE:
