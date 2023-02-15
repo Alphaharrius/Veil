@@ -20,7 +20,7 @@
 #include <condition_variable>
 
 #include "typedefs.hpp"
-#include "vm/resource.hpp"
+#include "memory/memory.hpp"
 
 namespace veil::threading {
 
@@ -61,7 +61,7 @@ namespace veil::threading {
         friend class QueueClient;
     };
 
-    class QueueClient : private vm::Storage<Queuee> {
+class QueueClient : private memory::TArena<Queuee> {
     public:
         QueueClient();
 

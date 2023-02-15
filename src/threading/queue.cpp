@@ -123,29 +123,28 @@ QueueClient::QueueClient() : nested_level(0) {}
 void QueueClient::wait(Queue &target) {
     Queuee *reentrance = nullptr;
     Queuee *available = nullptr;
-    // The amount of previously instantiated queuee in storage.
-    uint32 queuee_count = this->get_top_index();
+
+    memory::TArenaIterator<Queuee> iterator(*this);
+    Queuee *current = iterator.next();
     // The purpose of this loop is to look for queuee that have been queued on the target to be queued (reentrance), or
     // to look for a reusable queuee from another completed target operation.
-    for (int queuee_index = 0;
-         queuee_index < queuee_count &&
-         // Added for optimization. nested_level != 0 indicates this monitor have waited on some target before the
-         // current wait operation, and should continue searching for the reentrance queuee if possible; else, when an
-         // available queuee is found then the search is successful.
-         (available == nullptr || this->nested_level != 0) &&
-         reentrance == nullptr;
-         queuee_index++) {
-        Queuee *current = this->get(queuee_index);
+    while (current != nullptr &&
+           // Added for optimization. nested_level != 0 indicates this monitor have waited on some target before the
+           // current wait operation, and should continue searching for the reentrance queuee if possible; else, when an
+           // available queuee is found then the search is successful.
+           (available == nullptr || this->nested_level != 0) && reentrance == nullptr) {
         // Reusable queuee will be marked as idle.
         if (current->status == Queuee::STAT_IDLE) available = current;
             // The queuee to reentry
         else if (current->target == &target) reentrance = current;
+        current = iterator.next();
     }
+
     if (reentrance != nullptr) available = reentrance;
 
     // Add a new queuee if no reusable queuee is found.
     if (available == nullptr) {
-        available = this->expand();
+        available = this->allocate();
         // Instantiate the new queuee.
         new(available) Queuee();
     }
@@ -157,10 +156,9 @@ void QueueClient::exit(Queue &target) {
     // Return if the client hasn't wait on any target.
     if (this->nested_level == 0) return;
 
-    // The amount of previously instantiated queuee in storage.
-    uint32 queuee_count = this->get_top_index();
-    for (int queue_index = 0; queue_index < queuee_count; queue_index++) {
-        Queuee *current = this->get(queue_index);
+    memory::TArenaIterator<Queuee> iterator(*this);
+    Queuee *current = iterator.next();
+    do {
         // Search for the child queuee which have acquired the target queue, the first occurrence will also be the only
         // occurrence as QueueClient::wait ensured all reentrance behavior to be focused into a single queuee. The only
         // occurrence will also be in STAT_ACQUIRE as this operation will not be reached it is still in STAT_QUEUE, in
@@ -171,5 +169,6 @@ void QueueClient::exit(Queue &target) {
             // No need to go on further.
             break;
         }
-    }
+        current = iterator.next();
+    } while (current != nullptr);
 }
