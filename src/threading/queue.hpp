@@ -65,6 +65,8 @@ class QueueClient : private memory::TArena<Queuee> {
     public:
         QueueClient();
 
+        ~QueueClient();
+
         void wait(Queue &target);
 
         void exit(Queue &target);

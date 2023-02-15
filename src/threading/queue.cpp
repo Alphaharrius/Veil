@@ -120,6 +120,11 @@ bool Queuee::exit(Queue &queue) {
 
 QueueClient::QueueClient() : nested_level(0) {}
 
+QueueClient::~QueueClient() {
+    // Release all memory allocated by the cache.
+    this->TArena<Queuee>::free();
+}
+
 void QueueClient::wait(Queue &target) {
     Queuee *reentrance = nullptr;
     Queuee *available = nullptr;
