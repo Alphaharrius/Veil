@@ -20,28 +20,39 @@
 
 namespace veil::memory {
 
+    // Forward declaration
     class Region;
 
+    /// All VM objects which will be allocated in the process heap should extend this class, this class provides a
+    /// generalized backend of how the memory is allocated, and log error and force terminate the process on a failed
+    /// allocation.
     class HeapObject {
     public:
         void *operator new(uint64 size);
+
         void operator delete(void *address);
 
         void *operator new[](uint64 size) = delete;
+
         void operator delete[](void *address) = delete;
     };
 
-     class ValueObject {
-     public:
-         void *operator new(uint64 size) = delete;
-         void operator delete(void *address) = delete;
+    /// All VM objects that only allocate on the program stack or embedded directly to its parent object should extend
+    /// this class, this class forbids descendants to be allocated to the process heap.
+    class ValueObject {
+    public:
+        void *operator new(uint64 size) = delete;
 
-         void *operator new[](uint64 size) = delete;
-         void operator delete[](void *address) = delete;
-     };
+        void operator delete(void *address) = delete;
 
-     class ArenaObject {
-     };
+        void *operator new[](uint64 size) = delete;
+
+        void operator delete[](void *address) = delete;
+    };
+
+    /// All VM objects that allocates to a arena-allocator \c TArena should extend this class.
+    class ArenaObject {
+    };
 
     class Arena : public ValueObject {
     public:
@@ -81,6 +92,7 @@ namespace veil::memory {
         Region *next;
 
         friend class Arena;
+
         friend class Arena::Iterator;
     };
 
@@ -95,7 +107,7 @@ namespace veil::memory {
         uint64 offset;
     };
 
-    template <typename T>
+    template<typename T>
     class TArenaIterator;
 
     template<typename T>
@@ -129,7 +141,7 @@ namespace veil::memory {
     template<typename T>
     void TArena<T>::free() { this->embedded.free(); }
 
-    template <typename T>
+    template<typename T>
     class TArenaIterator : public Arena::Iterator {
     public:
         explicit TArenaIterator(TArena<T> &arena);
