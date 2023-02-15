@@ -9,19 +9,12 @@ add_executable(
         src/typedefs.hpp
         src/vm/structures.hpp
         src/memory/management.hpp src/memory/management.cpp
-        src/memory/os.hpp src/memory/os.cpp
+        src/os.hpp src/os.cpp
         src/vm/resource.hpp
         src/errors.hpp
         src/runtime/runtime.cpp src/runtime/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
-        src/memory/arena.hpp
-        src/memory/arena.cpp)
+        src/memory/memory.hpp src/memory/memory.cpp src/memory/memory_test.cpp)
 
-add_executable(
-        threading_queue_test
-        src/threading/queue_test.cpp
-        src/typedefs.hpp
-        src/vm/resource.hpp
-        src/vm/structures.hpp
-        src/threading/queue.hpp src/threading/queue.cpp
-)
+include(src/threading/CMakeLists.txt)
+include(src/memory/CMakeLists.txt)
