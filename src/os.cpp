@@ -75,15 +75,15 @@ void *veil::os::mmap(void *address, uint64 size, bool readwrite, bool reserve, u
         }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    allocated_address = (uint8 *) mmap(nullptr,
-                                       size,
-                                       (readwrite ? PROT_READ | PROT_WRITE : 0),
-                                       MAP_PRIVATE | (reserve ? 0 : MAP_NORESERVE),
-                                       -1, 0);
-    success = allocated_address != MAP_FAILED;
+    allocated_address = (uint8 *) ::mmap(nullptr,
+                                         size,
+                                         (readwrite ? PROT_READ | PROT_WRITE : 0),
+                                         MAP_PRIVATE | (reserve ? 0 : MAP_NORESERVE),
+                                         -1, 0);
     if (allocated_address == MAP_FAILED) {
         switch ((uint32) errno) {
-        case ENOMEM: error = ERR_NOMEM;
+            case ENOMEM:
+                error = ERR_NOMEM;
         }
     }
 #   endif

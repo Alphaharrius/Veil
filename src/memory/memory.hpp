@@ -2,7 +2,6 @@
 #define VEIL_MEMORY_HPP
 
 #include "typedefs.hpp"
-#include "os.hpp"
 
 namespace veil::memory {
 
@@ -10,19 +9,19 @@ namespace veil::memory {
 
     class HeapObject {
     public:
-        void *operator new(unsigned long long size);
+        void *operator new(uint64 size);
         void operator delete(void *address);
 
-        void *operator new[](unsigned long long size) = delete;
+        void *operator new[](uint64 size) = delete;
         void operator delete[](void *address) = delete;
     };
 
      class ValueObject {
      public:
-         void *operator new(unsigned long long size) = delete;
+         void *operator new(uint64 size) = delete;
          void operator delete(void *address) = delete;
 
-         void *operator new[](unsigned long long size) = delete;
+         void *operator new[](uint64 size) = delete;
          void operator delete[](void *address) = delete;
      };
 

@@ -275,7 +275,7 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management : vm::RequestConsumer, vm::Constituent<Runtime>, memory::ValueObject {
+    class Management : vm::RequestConsumer, vm::Constituent<Runtime>, memory::HeapObject {
     public:
         // TODO: Add documentations.
         const uint64 MAX_HEAP_SIZE;

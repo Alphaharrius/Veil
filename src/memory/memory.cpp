@@ -1,10 +1,11 @@
 #include <cassert>
 
 #include "memory.hpp"
+#include "os.hpp"
 
 using namespace veil::memory;
 
-void *HeapObject::operator new(unsigned long long int size) {
+void *HeapObject::operator new(uint64 size) {
     return os::malloc(size);
 }
 
