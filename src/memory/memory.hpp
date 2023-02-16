@@ -111,7 +111,7 @@ namespace veil::memory {
     class TArenaIterator;
 
     template<typename T>
-    class TArena : public ValueObject {
+    class TArena {
     public:
         static const uint32 DEFAULT_POOL_LEN = 64;
 
