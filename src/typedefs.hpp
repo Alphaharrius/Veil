@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_TYPEDEFS_HPP
-#define VEIL_TYPEDEFS_HPP
+#ifndef VEIL_SRC_TYPEDEFS_HPP
+#define VEIL_SRC_TYPEDEFS_HPP
 
 #include <cstdint>
 
@@ -28,4 +28,4 @@ typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
 
-#endif //VEIL_TYPEDEFS_HPP
+#endif //VEIL_SRC_TYPEDEFS_HPP

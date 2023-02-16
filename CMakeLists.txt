@@ -12,7 +12,7 @@ add_executable(
         src/os.hpp src/os.cpp
         src/vm/resource.hpp
         src/errors.hpp
-        src/runtime/runtime.cpp src/runtime/runtime.h
+        src/core/runtime.cpp src/core/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
         src/memory/memory.hpp src/memory/memory.cpp src/threading/os.cpp src/threading/os.hpp src/threading/management.cpp src/threading/management.hpp)
 

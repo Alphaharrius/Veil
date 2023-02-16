@@ -1,32 +1,58 @@
-#ifndef VEIL_MEMORY_HPP
-#define VEIL_MEMORY_HPP
+/// This file is part of the Veil distribution (https://github.com/Alphaharrius/Veil).
+/// Copyright (c) 2023 Alphaharrius.
+///
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU General Public License as published by
+/// the Free Software Foundation, version 3.
+///
+/// This program is distributed in the hope that it will be useful, but
+/// WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+/// General Public License for more details.
+///
+/// You should have received a copy of the GNU General Public License
+/// along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef VEIL_SRC_MEMORY_MEMORY_HPP
+#define VEIL_SRC_MEMORY_MEMORY_HPP
 
 #include "typedefs.hpp"
 
 namespace veil::memory {
 
+    // Forward declaration
     class Region;
 
+    /// All VM objects which will be allocated in the process heap should extend this class, this class provides a
+    /// generalized backend of how the memory is allocated, and log error and force terminate the process on a failed
+    /// allocation.
     class HeapObject {
     public:
         void *operator new(uint64 size);
+
         void operator delete(void *address);
 
         void *operator new[](uint64 size) = delete;
+
         void operator delete[](void *address) = delete;
     };
 
-     class ValueObject {
-     public:
-         void *operator new(uint64 size) = delete;
-         void operator delete(void *address) = delete;
+    /// All VM objects that only allocate on the program stack or embedded directly to its parent object should extend
+    /// this class, this class forbids descendants to be allocated to the process heap.
+    class ValueObject {
+    public:
+        void *operator new(uint64 size) = delete;
 
-         void *operator new[](uint64 size) = delete;
-         void operator delete[](void *address) = delete;
-     };
+        void operator delete(void *address) = delete;
 
-     class ArenaObject {
-     };
+        void *operator new[](uint64 size) = delete;
+
+        void operator delete[](void *address) = delete;
+    };
+
+    /// All VM objects that allocates to a arena-allocator \c TArena should extend this class.
+    class ArenaObject {
+    };
 
     class Arena : public ValueObject {
     public:
@@ -66,6 +92,7 @@ namespace veil::memory {
         Region *next;
 
         friend class Arena;
+
         friend class Arena::Iterator;
     };
 
@@ -80,7 +107,7 @@ namespace veil::memory {
         uint64 offset;
     };
 
-    template <typename T>
+    template<typename T>
     class TArenaIterator;
 
     template<typename T>
@@ -114,7 +141,7 @@ namespace veil::memory {
     template<typename T>
     void TArena<T>::free() { this->embedded.free(); }
 
-    template <typename T>
+    template<typename T>
     class TArenaIterator : public Arena::Iterator {
     public:
         explicit TArenaIterator(TArena<T> &arena);
@@ -135,4 +162,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_MEMORY_HPP
+#endif //VEIL_SRC_MEMORY_MEMORY_HPP

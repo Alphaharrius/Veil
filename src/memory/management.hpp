@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_MANAGEMENT_HPP
-#define VEIL_MANAGEMENT_HPP
+#ifndef VEIL_SRC_MEMORY_MANAGEMENT_HPP
+#define VEIL_SRC_MEMORY_MANAGEMENT_HPP
 
 #include <string>
 #include <atomic>
@@ -22,7 +22,7 @@
 #include "typedefs.hpp"
 #include "vm/structures.hpp"
 #include "vm/resource.hpp"
-#include "runtime/runtime.h"
+#include "core/runtime.h"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
 /// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the
@@ -324,4 +324,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_MANAGEMENT_HPP
+#endif //VEIL_SRC_MEMORY_MANAGEMENT_HPP

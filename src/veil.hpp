@@ -13,27 +13,14 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_OS_HPP
-#define VEIL_SRC_OS_HPP
+#ifndef VEIL_HPP
+#define VEIL_HPP
 
-#include <cstdlib>
+namespace veil {
 
-#include "typedefs.hpp"
-#include "vm/structures.hpp"
-
-namespace veil::os {
-
-    void *malloc(uint64 size);
-
-    void free(void *address);
-
-    uint32 get_page_size();
-
-    void *mmap(void *address, uint64 size, bool readwrite, bool reserve, uint32 &error);
-
-    void force_exit_on_error(
-            const std::string& reason, std::string& filename, std::string& function_name, uint32 line_number);
+    static const char *VM_NAME = "Veil Fabric Runtime";
+    static const char *VM_VERSION = "0.0.1b";
 
 }
 
-#endif //VEIL_SRC_OS_HPP
+#endif //VEIL_HPP

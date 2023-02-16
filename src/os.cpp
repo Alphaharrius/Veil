@@ -17,7 +17,7 @@
 
 #include "os.hpp"
 #include "errors.hpp"
-#include "vm/details.hpp"
+#include "veil.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
