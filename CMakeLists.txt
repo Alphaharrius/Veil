@@ -14,7 +14,7 @@ add_executable(
         src/errors.hpp
         src/runtime/runtime.cpp src/runtime/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
-        src/memory/memory.hpp src/memory/memory.cpp)
+        src/memory/memory.hpp src/memory/memory.cpp src/threading/os.cpp src/threading/os.hpp src/threading/management.cpp src/threading/management.hpp)
 
 include(src/threading/CMakeLists.txt)
 include(src/memory/CMakeLists.txt)
