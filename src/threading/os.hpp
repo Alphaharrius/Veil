@@ -20,28 +20,22 @@
 
 namespace veil::os {
 
-    class Callable : memory::ValueObject {
+    class Callable {
     public:
-        explicit Callable(void *params);
-
-        virtual void invoke() = 0;
-
-    protected:
-        void *params;
+        virtual void run() = 0;
     };
 
-    class PlatformThread : public memory::ValueObject {
-    private:
-        PlatformThread();
+    class OSThread : public memory::ValueObject {
+    public:
+        OSThread();
 
         void start(Callable &callable);
 
         void join();
 
+    private:
         void *os_thread;
         uint64 os_thread_id;
-
-        friend class OSThread;
     };
 
 }

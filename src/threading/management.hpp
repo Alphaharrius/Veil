@@ -17,11 +17,26 @@
 #define VEIL_SRC_THREADING_MANAGEMENT_HPP
 
 #include "memory/memory.hpp"
+#include "threading/os.hpp"
+#include "vm/structures.hpp"
+#include "core/runtime.h"
 
 namespace veil::threading {
 
-    class VMThread: memory::ArenaObject {
+    class VMThread :
+            public vm::Constituent<Runtime>, public memory::HeapObject, private os::Callable, public vm::HasName {
+    public:
+        explicit VMThread(std::string &name, Runtime &runtime);
 
+        void start();
+
+        void join();
+
+    private:
+        os::OSThread embedded;
+    };
+
+    class Management : public memory::ValueObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread *> {
     };
 
 }

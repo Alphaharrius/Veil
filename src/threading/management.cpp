@@ -14,3 +14,15 @@
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "management.hpp"
+
+using namespace veil::threading;
+
+VMThread::VMThread(std::string &name, Runtime &runtime) : vm::Constituent<Runtime>(runtime), vm::HasName(name) {}
+
+void VMThread::start() {
+    embedded.start(*this);
+}
+
+void VMThread::join() {
+    embedded.join();
+}

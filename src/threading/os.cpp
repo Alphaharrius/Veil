@@ -29,20 +29,18 @@
 
 using namespace veil::os;
 
-Callable::Callable(void *params) : params(params) {}
-
-PlatformThread::PlatformThread() : os_thread(nullptr), os_thread_id(0) {}
+OSThread::OSThread() : os_thread(nullptr), os_thread_id(0) {}
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 DWORD WINAPI win32_thread_function(void *params) {
     auto *callable = (Callable *) params;
-    callable->invoke();
+    callable->run();
     return 0; // We will not use this return value.
 }
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 #endif
 
-void PlatformThread::start(Callable &callable) {
+void OSThread::start(Callable &callable) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     this->os_thread = CreateThread(nullptr,
                                    0,
@@ -54,7 +52,7 @@ void PlatformThread::start(Callable &callable) {
 #   endif
 }
 
-void PlatformThread::join() {
+void OSThread::join() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     WaitForSingleObject(this->os_thread, INFINITE);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
