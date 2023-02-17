@@ -35,3 +35,8 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
      - This is done by calling the method ```threading::Management::register``` at the start of ```VMThread::start```.
    - [ ] Wait for all registered threads to complete their execution from the first to the last.
    - [ ] Method to interrupt all thread at once.
+
+6. [ ] Implement the Veil execution environment.
+   - [ ] Design the Veil VM bytecode specifications.
+   - [ ] Implement the Veil bytecode interpreter.
+   - [ ] Implement ```VeilThread```.
