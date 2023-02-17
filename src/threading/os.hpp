@@ -27,6 +27,8 @@ namespace veil::os {
 
     class OSThread : public memory::ValueObject {
     public:
+        static void sleep(uint32 milliseconds);
+
         OSThread();
 
         void start(Callable &callable);
