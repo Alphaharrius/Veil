@@ -16,6 +16,8 @@
 #ifndef VEIL_SRC_THREADING_MANAGEMENT_HPP
 #define VEIL_SRC_THREADING_MANAGEMENT_HPP
 
+#include <atomic>
+
 #include "memory/memory.hpp"
 #include "threading/os.hpp"
 #include "vm/structures.hpp"
@@ -32,11 +34,22 @@ namespace veil::threading {
 
         void join();
 
+        void interrupt();
+
+    protected:
+        bool is_interrupted();
+
     private:
         os::OSThread embedded;
+
+        std::atomic_bool interrupted;
     };
 
-    class Management : public memory::ValueObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread *> {
+    class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread *> {
+    private:
+        void register_thread(VMThread &thread);
+
+        friend void VMThread::start();
     };
 
 }
