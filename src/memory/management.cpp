@@ -41,7 +41,7 @@ Allocator *Management::create_allocator(vm::Request &request) {
     return this->algorithm->create_allocator(*this, request);
 }
 
-Management *Management::new_instance(Runtime &runtime, ManagementInitRequest &request) {
+Management *Management::new_instance(Runtime &runtime, MemoryInitRequest &request) {
     if (!request.algorithm) {
         vm::RequestConsumer::set_error(request, memory::ERR_NO_ALGO);
         return nullptr;
@@ -102,7 +102,7 @@ std::string Management::get_error_info(uint32 status) {
 
 Pointer::Pointer(uint32 size) : size(size) {}
 
-ManagementInitRequest::ManagementInitRequest(
+MemoryInitRequest::MemoryInitRequest(
         uint64 max_heap_size,
         Algorithm *algorithm,
         void *algorithm_params) :

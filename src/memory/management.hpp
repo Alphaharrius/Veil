@@ -80,7 +80,7 @@ namespace veil::memory {
     };
 
     /// The request as a parameter to initialize the memory management and provide params for the chosen \c Algorithm.
-    struct ManagementInitRequest : public vm::Request {
+    struct MemoryInitRequest : public vm::Request {
         /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
         /// memory for each of the VM threads.
         uint64 max_heap_size;
@@ -92,7 +92,7 @@ namespace veil::memory {
         /// \param max_heap_size    The maximum utilizable memory managed by the memory management, this includes the
         ///                         heap memory and the stack memory for each of the VM threads.
         /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
-        explicit ManagementInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
+        explicit MemoryInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
     struct AlgorithmInitRequest : vm::Request {
@@ -141,7 +141,7 @@ namespace veil::memory {
 
         /// \brief Initialize the memory management algorithm.
         /// \attention Algorithm specific parameters can be passed with the attribute \c
-        /// ManagementInitRequest::algorithm_params, which a custom structure can be defined and passed as a \c void
+        /// MemoryInitRequest::algorithm_params, which a custom structure can be defined and passed as a \c void
         /// pointer.
         /// \param request The request of the initialization.
         virtual void initialize(AlgorithmInitRequest &request) = 0;
@@ -284,7 +284,7 @@ namespace veil::memory {
         /// \param runtime The host runtime where this management belongs.
         /// \param request The request of the construction.
         /// \return        The new management instance.
-        static Management *new_instance(Runtime &runtime, ManagementInitRequest &request);
+        static Management *new_instance(Runtime &runtime, MemoryInitRequest &request);
 
         // TODO: Add documentations.
         Allocator *create_allocator(vm::Request &request);
