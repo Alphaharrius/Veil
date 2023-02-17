@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 
+#include "core/runtime.hpp"
 #include "management.hpp"
 
 using namespace veil::threading;
@@ -22,10 +23,10 @@ private:
 };
 
 int main() {
-    veil::Runtime runtime;
-    auto *task = new PrintNameAtIntervalTask("TaskABC", runtime);
-    task->start();
-    task->join();
-    std::cout << "Done!" << std::endl;
-    delete task;
+//    veil::Runtime runtime;
+//    auto *task = new PrintNameAtIntervalTask("TaskABC", runtime);
+//    task->start();
+//    task->join();
+//    std::cout << "Done!" << std::endl;
+//    delete task;
 }
