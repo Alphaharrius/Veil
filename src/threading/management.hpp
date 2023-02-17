@@ -21,7 +21,7 @@
 #include "memory/memory.hpp"
 #include "threading/os.hpp"
 #include "vm/structures.hpp"
-#include "core/runtime.h"
+#include "core/runtime.forward.hpp"
 
 namespace veil::threading {
 
