@@ -84,6 +84,22 @@ namespace veil::vm {
     template<class P>
     Constituent<P>::Constituent(P &root) : root(&root) {}
 
+    template<class C>
+    class Composite {
+    public:
+        explicit Composite(C &composition) : composition(&composition) {}
+
+        C *get_composition();
+
+    private:
+        C *composition;
+    };
+
+    template<class C>
+    C *Composite<C>::get_composition() {
+        return composition;
+    }
+
 }
 
 #endif //VEIL_SRC_STRUCTURES_HPP
