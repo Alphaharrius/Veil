@@ -23,7 +23,7 @@
 
 #endif
 
-#include "threading/os.hpp"
+#include "src/threading/os.hpp"
 
 #include <thread>
 

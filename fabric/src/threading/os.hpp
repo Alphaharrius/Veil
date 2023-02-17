@@ -13,8 +13,33 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "runtime.hpp"
+#ifndef VEIL_SRC_THREADING_OS_HPP
+#define VEIL_SRC_THREADING_OS_HPP
 
-veil::Runtime::Runtime(veil::memory::Management &memory_management, veil::threading::Management &threading_management) :
-        vm::Composite<memory::Management>(memory_management),
-        vm::Composite<threading::Management>(threading_management) {}
+#include "src/memory/memory.hpp"
+
+namespace veil::os {
+
+    class Callable {
+    public:
+        virtual void run() = 0;
+    };
+
+    class OSThread : public memory::ValueObject {
+    public:
+        static void sleep(uint32 milliseconds);
+
+        OSThread();
+
+        void start(Callable &callable);
+
+        void join();
+
+    private:
+        void *os_thread;
+        uint64 os_thread_id;
+    };
+
+}
+
+#endif //VEIL_SRC_THREADING_OS_HPP

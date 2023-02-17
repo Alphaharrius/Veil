@@ -13,33 +13,17 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_THREADING_OS_HPP
-#define VEIL_SRC_THREADING_OS_HPP
+#include <iostream>
 
-#include "memory/memory.hpp"
+#include "src/os.hpp"
+#include "src/errors.hpp"
+#include "src/veil.hpp"
 
-namespace veil::os {
-
-    class Callable {
-    public:
-        virtual void run() = 0;
-    };
-
-    class OSThread : public memory::ValueObject {
-    public:
-        static void sleep(uint32 milliseconds);
-
-        OSThread();
-
-        void start(Callable &callable);
-
-        void join();
-
-    private:
-        void *os_thread;
-        uint64 os_thread_id;
-    };
-
+void veil::os::force_exit_on_error(
+        const std::string &reason, std::string &filename, std::string &function_name, uint32 line_number) {
+    std::cerr << "A critical error is detected by the runtime environment:" << std::endl
+              << "Reason: " << reason << std::endl
+              << "At: " << function_name << " (" << filename << ": " << line_number << ")" << std::endl
+              << "Runtime: " << veil::VM_NAME << " version(" << veil::VM_VERSION << ")" << std::endl;
+    ::exit(1);
 }
-
-#endif //VEIL_SRC_THREADING_OS_HPP

@@ -18,10 +18,10 @@
 
 #include <atomic>
 
-#include "memory/memory.hpp"
-#include "threading/os.hpp"
-#include "vm/structures.hpp"
-#include "core/runtime.forward.hpp"
+#include "src/memory/memory.hpp"
+#include "src/threading/os.hpp"
+#include "src/vm/structures.hpp"
+#include "src/core/runtime.forward.hpp"
 
 namespace veil::threading {
 

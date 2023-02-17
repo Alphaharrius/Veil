@@ -19,8 +19,8 @@
 #include <atomic>
 #include <condition_variable>
 
-#include "typedefs.hpp"
-#include "memory/memory.hpp"
+#include "src/typedefs.hpp"
+#include "src/memory/memory.hpp"
 
 namespace veil::threading {
 

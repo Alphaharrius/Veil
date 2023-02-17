@@ -13,10 +13,26 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "structures.hpp"
+#ifndef VEIL_SRC_CORE_RUNTIME_HPP
+#define VEIL_SRC_CORE_RUNTIME_HPP
 
-using namespace veil::vm;
+#include "src/typedefs.hpp"
+#include "src/vm/structures.hpp"
+#include "src/core/runtime.forward.hpp"
+#include "src/memory/memory.hpp"
+#include "src/memory/management.hpp"
+#include "src/threading/management.hpp"
 
-HasName::HasName(std::string &name) : name(name) {}
+namespace veil {
 
-std::string HasName::get_name() { return name; }
+    class Runtime :
+            public memory::ValueObject,
+            public vm::Composite<memory::Management>,
+            public vm::Composite<threading::Management> {
+    private:
+        Runtime(memory::Management &memory_management, threading::Management &threading_management);
+    };
+
+}
+
+#endif //VEIL_SRC_CORE_RUNTIME_HPP

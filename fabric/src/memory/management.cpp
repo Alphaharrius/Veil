@@ -13,9 +13,9 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include "memory/management.hpp"
-#include "errors.hpp"
-#include "os.hpp"
+#include "src/memory/management.hpp"
+#include "src/errors.hpp"
+#include "src/memory/os.hpp"
 
 using namespace veil::memory;
 

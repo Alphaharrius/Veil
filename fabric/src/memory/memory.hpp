@@ -16,7 +16,7 @@
 #ifndef VEIL_SRC_MEMORY_MEMORY_HPP
 #define VEIL_SRC_MEMORY_MEMORY_HPP
 
-#include "typedefs.hpp"
+#include "src/typedefs.hpp"
 
 namespace veil::memory {
 

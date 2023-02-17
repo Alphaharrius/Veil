@@ -16,7 +16,7 @@
 #ifndef VEIL_SRC_ERRORS_HPP
 #define VEIL_SRC_ERRORS_HPP
 
-#include "typedefs.hpp"
+#include "src/typedefs.hpp"
 
 // The error handling approach of the Veil runtime is to use error codes confined to their resultant namespace level,
 // each level will map the error code from the previous level to their own error code. This header is used side by side

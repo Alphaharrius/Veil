@@ -13,27 +13,10 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_OS_HPP
-#define VEIL_SRC_OS_HPP
+#include "src/vm/structures.hpp"
 
-#include <cstdlib>
+using namespace veil::vm;
 
-#include "typedefs.hpp"
-#include "vm/structures.hpp"
+HasName::HasName(std::string &name) : name(name) {}
 
-namespace veil::os {
-
-    void *malloc(uint64 size);
-
-    void free(void *address);
-
-    uint32 get_page_size();
-
-    void *mmap(void *address, uint64 size, bool readwrite, bool reserve, uint32 &error);
-
-    void force_exit_on_error(
-            const std::string& reason, std::string& filename, std::string& function_name, uint32 line_number);
-
-}
-
-#endif //VEIL_SRC_OS_HPP
+std::string HasName::get_name() { return name; }

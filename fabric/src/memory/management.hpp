@@ -19,10 +19,10 @@
 #include <string>
 #include <atomic>
 
-#include "typedefs.hpp"
-#include "vm/structures.hpp"
-#include "vm/resource.hpp"
-#include "core/runtime.forward.hpp"
+#include "src/typedefs.hpp"
+#include "src/vm/structures.hpp"
+#include "src/vm/resource.hpp"
+#include "src/core/runtime.forward.hpp"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
 /// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the

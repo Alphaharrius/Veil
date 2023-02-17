@@ -1,8 +1,8 @@
 #include <iostream>
 #include <thread>
 
-#include "core/runtime.hpp"
-#include "management.hpp"
+#include "src/core/runtime.hpp"
+#include "src/management.hpp"
 
 using namespace veil::threading;
 

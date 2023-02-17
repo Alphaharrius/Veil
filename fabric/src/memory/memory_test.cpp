@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "memory.hpp"
+#include "src/memory/memory.hpp"
 
 using namespace veil::memory;
 

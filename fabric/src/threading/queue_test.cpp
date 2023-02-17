@@ -3,7 +3,7 @@
 #include <string>
 #include <utility>
 
-#include "queue.hpp"
+#include "src/threading/queue.hpp"
 
 using namespace veil::threading;
 
