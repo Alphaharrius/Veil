@@ -68,12 +68,12 @@ namespace veil::vm {
     template <class R>
     class Constituent {
     public:
+        explicit Constituent(R &root);
+
         R *get_root();
 
     protected:
-        const R *root;
-
-        explicit Constituent(R &root);
+        R *root;
     };
 
     template<class P>
