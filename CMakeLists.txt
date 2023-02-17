@@ -12,11 +12,11 @@ add_executable(
         src/os.hpp src/os.cpp
         src/vm/resource.hpp
         src/errors.hpp
-        src/core/runtime.cpp src/core/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
         src/memory/memory.hpp src/memory/memory.cpp
         src/threading/os.cpp src/threading/os.hpp
-        src/threading/management.cpp src/threading/management.hpp)
+        src/threading/management.cpp src/threading/management.hpp
+        src/core/runtime.cpp src/core/runtime.hpp src/core/runtime.forward.hpp)
 
 add_executable(
         memory_memory_test
@@ -27,11 +27,11 @@ add_executable(
         src/os.hpp src/os.cpp
         src/vm/resource.hpp
         src/errors.hpp
-        src/core/runtime.cpp src/core/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
         src/memory/memory.hpp src/memory/memory.cpp
         src/threading/os.cpp src/threading/os.hpp
-        src/threading/management.cpp src/threading/management.hpp)
+        src/threading/management.cpp src/threading/management.hpp
+        src/core/runtime.cpp src/core/runtime.hpp src/core/runtime.forward.hpp)
 
 add_executable(
         threading_queue_test
@@ -42,11 +42,11 @@ add_executable(
         src/os.hpp src/os.cpp
         src/vm/resource.hpp
         src/errors.hpp
-        src/core/runtime.cpp src/core/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
         src/memory/memory.hpp src/memory/memory.cpp
         src/threading/os.cpp src/threading/os.hpp
-        src/threading/management.cpp src/threading/management.hpp)
+        src/threading/management.cpp src/threading/management.hpp
+        src/core/runtime.cpp src/core/runtime.hpp src/core/runtime.forward.hpp)
 
 add_executable(
         vm_thread_test
@@ -57,8 +57,8 @@ add_executable(
         src/os.hpp src/os.cpp
         src/vm/resource.hpp
         src/errors.hpp
-        src/core/runtime.cpp src/core/runtime.h
         src/threading/queue.cpp src/threading/queue.hpp
         src/memory/memory.hpp src/memory/memory.cpp
         src/threading/os.cpp src/threading/os.hpp
-        src/threading/management.cpp src/threading/management.hpp)
+        src/threading/management.cpp src/threading/management.hpp
+        src/core/runtime.cpp src/core/runtime.hpp src/core/runtime.forward.hpp)
