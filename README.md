@@ -22,10 +22,14 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
    - [ ] ```OSMutex```
    - [ ] ```OSConditionVariable```
 
-3. [ ] Exchange all existing usage of ```<atomic>``` to the encapsulations.
+3. [ ] Implement VM specific threading primitives.
+    - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
+    - [ ] More to be added.
+
+4. [ ] Exchange all existing usage of ```<atomic>``` to the encapsulations.
    - [ ] ```Queue```
 
-4. [ ] Implement the thread management.
+5. [ ] Implement the thread management.
    - [ ] All management's functionality should be protected by a mutex.
    - [x] Register all ```VMThread``` upon their start of execution.
      - This is done by calling the method ```threading::Management::register``` at the start of ```VMThread::start```.
