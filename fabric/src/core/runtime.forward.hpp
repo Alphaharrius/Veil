@@ -13,11 +13,11 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_CORE_RUNTIME_FORWARD_HPP
-#define VEIL_SRC_CORE_RUNTIME_FORWARD_HPP
+#ifndef VEIL_FABRIC_SRC_CORE_RUNTIME_FORWARD_HPP
+#define VEIL_FABRIC_SRC_CORE_RUNTIME_FORWARD_HPP
 
 namespace veil {
     class Runtime;
 }
 
-#endif //VEIL_SRC_CORE_RUNTIME_FORWARD_HPP
+#endif //VEIL_FABRIC_SRC_CORE_RUNTIME_FORWARD_HPP

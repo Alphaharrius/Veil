@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_THREADING_QUEUE_HPP
-#define VEIL_SRC_THREADING_QUEUE_HPP
+#ifndef VEIL_FABRIC_SRC_THREADING_QUEUE_HPP
+#define VEIL_FABRIC_SRC_THREADING_QUEUE_HPP
 
 #include <atomic>
 #include <condition_variable>
@@ -135,4 +135,4 @@ namespace veil::threading {
 
 }
 
-#endif //VEIL_SRC_THREADING_QUEUE_HPP
+#endif //VEIL_FABRIC_SRC_THREADING_QUEUE_HPP

@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_STRUCTURES_HPP
-#define VEIL_SRC_STRUCTURES_HPP
+#ifndef VEIL_FABRIC_SRC_STRUCTURES_HPP
+#define VEIL_FABRIC_SRC_STRUCTURES_HPP
 
 #include <string>
 
@@ -102,4 +102,4 @@ namespace veil::vm {
 
 }
 
-#endif //VEIL_SRC_STRUCTURES_HPP
+#endif //VEIL_FABRIC_SRC_STRUCTURES_HPP

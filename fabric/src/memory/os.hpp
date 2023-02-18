@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_MEMORY_OS_HPP
-#define VEIL_SRC_MEMORY_OS_HPP
+#ifndef VEIL_FABRIC_SRC_MEMORY_OS_HPP
+#define VEIL_FABRIC_SRC_MEMORY_OS_HPP
 
 #include "src/typedefs.hpp"
 
@@ -30,4 +30,4 @@ namespace veil::os {
 
 }
 
-#endif //VEIL_SRC_MEMORY_OS_HPP
+#endif //VEIL_FABRIC_SRC_MEMORY_OS_HPP

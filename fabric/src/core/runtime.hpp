@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_SRC_CORE_RUNTIME_HPP
-#define VEIL_SRC_CORE_RUNTIME_HPP
+#ifndef VEIL_FABRIC_SRC_CORE_RUNTIME_HPP
+#define VEIL_FABRIC_SRC_CORE_RUNTIME_HPP
 
 #include "src/typedefs.hpp"
 #include "src/vm/structures.hpp"
@@ -35,4 +35,4 @@ namespace veil {
 
 }
 
-#endif //VEIL_SRC_CORE_RUNTIME_HPP
+#endif //VEIL_FABRIC_SRC_CORE_RUNTIME_HPP
