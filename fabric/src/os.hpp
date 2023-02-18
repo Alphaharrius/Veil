@@ -24,7 +24,7 @@
 namespace veil::os {
 
     void force_exit_on_error(
-            const std::string& reason, std::string& filename, std::string& function_name, uint32 line_number);
+            const std::string &reason, std::string &filename, std::string &function_name, uint32 line_number);
 
 }
 
