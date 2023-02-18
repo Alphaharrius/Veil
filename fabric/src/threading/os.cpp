@@ -24,6 +24,7 @@
 #endif
 
 #include "src/threading/os.hpp"
+#include "src/vm/structures.hpp"
 
 #include <thread>
 
@@ -40,14 +41,14 @@ OSThread::OSThread() : os_thread(nullptr), os_thread_id(0) {}
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 DWORD WINAPI win32_thread_function(void *params) {
-    auto *callable = (Callable *) params;
+    auto *callable = (veil::vm::Callable *) params;
     callable->run();
     return 0; // We will not use this return value.
 }
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 #endif
 
-void OSThread::start(Callable &callable) {
+void OSThread::start(vm::Callable &callable) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     this->os_thread = CreateThread(nullptr,
                                    0,

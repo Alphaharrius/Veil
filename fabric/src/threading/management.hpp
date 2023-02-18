@@ -26,7 +26,7 @@
 namespace veil::threading {
 
     class VMThread :
-            public vm::Constituent<Runtime>, public memory::HeapObject, private os::Callable, public vm::HasName {
+            public vm::Constituent<Runtime>, public memory::HeapObject, private veil::vm::Callable, public vm::HasName {
     public:
         explicit VMThread(std::string &name, Runtime &runtime);
 

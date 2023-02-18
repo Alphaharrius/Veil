@@ -100,6 +100,11 @@ namespace veil::vm {
         return composition;
     }
 
+    class Callable {
+    public:
+        virtual void run() = 0;
+    };
+
 }
 
 #endif //VEIL_FABRIC_SRC_STRUCTURES_HPP

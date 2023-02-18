@@ -17,13 +17,9 @@
 #define VEIL_FABRIC_SRC_THREADING_OS_HPP
 
 #include "src/memory/memory.hpp"
+#include "src/vm/structures.hpp"
 
 namespace veil::os {
-
-    class Callable {
-    public:
-        virtual void run() = 0;
-    };
 
     class OSThread : public memory::ValueObject {
     public:
@@ -31,7 +27,7 @@ namespace veil::os {
 
         OSThread();
 
-        void start(Callable &callable);
+        void start(vm::Callable &callable);
 
         void join();
 
