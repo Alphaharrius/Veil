@@ -259,9 +259,6 @@ namespace veil::memory {
         // TODO: Add documentations.
         Allocator *create_allocator(vm::Request &request);
 
-        // TODO: Add documentations.
-        std::string get_error_info(uint32 status) override;
-
     private:
         // TODO: Add documentations.
         std::atomic_uint64_t mapped_heap_size;
