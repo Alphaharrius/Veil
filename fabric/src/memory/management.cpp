@@ -88,7 +88,6 @@ std::string Management::get_error_info(uint32 status) {
 Pointer::Pointer(uint32 size) : size(size) {}
 
 MemoryInitRequest::MemoryInitRequest(
-        uint64 max_heap_size,
         Algorithm *algorithm,
         void *algorithm_params) :
         algorithm(algorithm), algorithm_params(algorithm_params) {}
