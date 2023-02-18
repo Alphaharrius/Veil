@@ -20,6 +20,7 @@
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 
 #include <pthread.h>
+#include <unistd.h>
 
 #endif
 
@@ -33,6 +34,7 @@ void OSThread::sleep(uint32 milliseconds) {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     Sleep(milliseconds);
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    ::sleep(milliseconds);
 #endif
 }
 
