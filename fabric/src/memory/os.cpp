@@ -45,12 +45,10 @@ void *veil::os::malloc(uint64 size) {
     // termination procedure is unlikely to be executed.
     // NOTE: This error will most likely not happening.
     if (!address) {
-        uint32 line_number = __LINE__;
-
         std::string reason = "Host process is short in heap memory.";
         std::string filename = __FILE__;
         std::string function_name = __func__;
-        veil::os::force_exit_on_error(reason, filename, function_name, line_number);
+        veil::os::force_exit_on_error(reason, filename, function_name, __LINE__);
     }
     return static_cast<uint8 *>(address);
 }
