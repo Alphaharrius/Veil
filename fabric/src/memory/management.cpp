@@ -20,22 +20,6 @@
 
 using namespace veil::memory;
 
-Pointer *Allocator::allocate(AllocateRequest &request) {
-    return this->root->algorithm->allocator_pointer_allocate(*this, request);
-}
-
-void Allocator::acquire(PointerAcquireRequest &request) {
-    this->root->algorithm->allocator_pointer_acquire(*this, request);
-}
-
-void Allocator::reserve(PointerActionRequest &request) {
-    this->root->algorithm->allocator_pointer_reserve(*this, request);
-}
-
-void Allocator::release(PointerActionRequest &request) {
-    this->root->algorithm->allocator_pointer_release(*this, request);
-}
-
 Allocator::Allocator(Management &management) : vm::Constituent<Management>(management) {}
 
 Allocator *Management::create_allocator(vm::Request &request) {

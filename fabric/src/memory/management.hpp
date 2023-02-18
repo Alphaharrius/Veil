@@ -120,9 +120,9 @@ namespace veil::memory {
     ///     <li> The thread synchronization feature of the Veil runtime is provided by the memory management algorithm,
     ///          this might sounds weird but keep in mind that this feature is inplace to enforce thread-safety of Veil
     ///          data objects ( \c Pointer ) in the first place. </li>
-    ///     <li> When a \c Pointer is acquired exclusively via \c Algorithm::allocator_pointer_acquire method, the
-    ///          algorithm must initiate a lock operation of the target \c Pointer to enforce thread-safety; otherwise
-    ///          if the acquisition is not exclusive, the algorithm held the final decision on whether the acquisition
+    ///     <li> When a \c Pointer is acquired exclusively via \c Allocator::acquire method, the algorithm must initiate
+    ///          a lock operation of the target \c Pointer to enforce thread-safety; otherwise if the acquisition is not
+    ///          exclusive, the algorithm held the final decision on whether the acquisition
     ///          will be exclusive. </li>
     ///     <li> The maximum memory size associated with a \c Pointer must not exceed 4GiB, allocation larger than this
     ///          should be handled beyond the management algorithm. </li>
@@ -161,43 +161,6 @@ namespace veil::memory {
         /// \param request    The request of the action.
         /// \return           An \c Allocator of the provided \a management.
         virtual Allocator *create_allocator(Management &management, vm::Request &request) = 0;
-
-        /// \brief Allocate a memory sector and store the relevant information within a \c Pointer.
-        /// \attention Since the structure of the \c Pointer is not specified, thus does not contain any necessary
-        /// attributes to perform algorithm specific operations. The suggested style of implementing this function is to
-        /// create a subclass of \c Pointer, then define the algorithm specific structures in the subclass, then cast
-        /// into a pointer of \c Pointer as the return object type.
-        /// \param allocator The \c Allocator which the new \c Pointer is requested from.
-        /// \param request   The request of the action, the maximum allowed size associated with a pointer is 4GiB.
-        /// \return          An \c Pointer of the memory sector requested by \a request.
-        /// \sa \c Pointer
-        virtual Pointer *allocator_pointer_allocate(Allocator &allocator, AllocateRequest &request) = 0;
-
-        /// \brief Reserve an unused \c Pointer for future use.
-        /// \attention This method allows the algorithm to implements a infrastructure for efficient \c Pointer reuse
-        /// without full garbage collection. For example stacking unused pointers with allocated memory sector to be
-        /// reused when new acquisition request is made.
-        /// \param allocator The \c Allocator which this operation is performed from.
-        /// \param request   The request of the action.
-        virtual void allocator_pointer_reserve(Allocator &allocator, PointerActionRequest &request) = 0;
-
-        /// \brief Acquire the access right to a pointer with exclusive access depends on
-        /// \c PointerAcquireRequest::exclusive.
-        /// \attention Since the attribute \c PointerAcquireRequest::exclusive is suggestive, thus the underlying
-        /// algorithm can decide whether to exercise the request if the value is set \c false; but a request with value
-        /// set to \c true must wait the pointer exclusively. If a garbage collector exists in the algorithm, then
-        /// this function should also activate the concurrent lock or anything equivalent to prevent concurrent
-        /// modification of the information stored within the table of \c Pointer.
-        /// \param allocator The \c Allocator of the local management.
-        /// \param request   The request of the operation.
-        virtual void allocator_pointer_acquire(Allocator &allocator, PointerAcquireRequest &request) = 0;
-
-        /// \brief Release the access right to a pointer.
-        /// \attention If a garbage collector exists in the algorithm, then this function should also deactivate the
-        /// concurrent lock or anything equivalent to allow the collector to function within the memory management.
-        /// \param allocator The \c Allocator of the local management.
-        /// \param request   The request of the operation.
-        virtual void allocator_pointer_release(Allocator &allocator, PointerActionRequest &request) = 0;
     };
 
     /// A \c Pointer represents a static placeholder that stores the address and byte size of the its associated memory
@@ -226,23 +189,37 @@ namespace veil::memory {
         explicit Allocator(Management &management);
 
         /// \brief Allocate a memory sector and store the relevant information within a \c Pointer.
+        /// \attention Since the structure of the \c Pointer is not specified, thus does not contain any necessary
+        /// attributes to perform algorithm specific operations. The suggested style of implementing this function is to
+        /// create a subclass of \c Pointer, then define the algorithm specific structures in the subclass, then cast
+        /// into a pointer of \c Pointer as the return object type.
         /// \param request   The request of the action, the maximum allowed size associated with a pointer is 4GiB.
         /// \return          An \c Pointer of the memory sector requested by \a request.
         /// \sa \c Pointer
-        Pointer *allocate(AllocateRequest &request);
+        virtual Pointer *allocate(AllocateRequest &request) = 0;
 
         /// \brief Reserve an unused \c Pointer for future use.
+        /// \attention This method allows the algorithm to implements a infrastructure for efficient \c Pointer reuse
+        /// without full garbage collection. For example stacking unused pointers with allocated memory sector to be
+        /// reused when new acquisition request is made.
         /// \param request   The request of the action.
-        void reserve(PointerActionRequest &request);
+        virtual void reserve(PointerActionRequest &request) = 0;
 
         /// \brief Acquire the access right to a pointer with exclusive access depends on
         /// \c PointerAcquireRequest::exclusive.
+        /// \attention Since the attribute \c PointerAcquireRequest::exclusive is suggestive, thus the underlying
+        /// algorithm can decide whether to exercise the request if the value is set \c false; but a request with value
+        /// set to \c true must wait the pointer exclusively. If a garbage collector exists in the algorithm, then
+        /// this function should also activate the concurrent lock or anything equivalent to prevent concurrent
+        /// modification of the information stored within the table of \c Pointer.
         /// \param request   The request of the operation.
-        void acquire(PointerAcquireRequest &request);
+        virtual void acquire(PointerAcquireRequest &request) = 0;
 
         /// \brief Release the access right to a pointer.
+        /// \attention If a garbage collector exists in the algorithm, then this function should also deactivate the
+        /// concurrent lock or anything equivalent to allow the collector to function within the memory management.
         /// \param request   The request of the operation.
-        void release(PointerActionRequest &request);
+        virtual void release(PointerActionRequest &request) = 0;
 
         /// The allocator must be provided by the memory management directly, the way to instantiate an object of this
         /// class is to call the constructor on a memory section with the size of this class.
