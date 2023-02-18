@@ -31,18 +31,26 @@ namespace veil {
 
 namespace veil::os {
 
-    static const uint32 ERR_NOMEM = 1;
+    static const uint32 ERR_NOMEM = ERR_NONE + 1;
 
 }
 
 namespace veil::memory {
 
-    static const uint32 ERR_HEAP_OVERFLOW = 1;
-    static const uint32 ERR_HOST_NOMEM = 2;
+    static const uint32 ERR_HEAP_OVERFLOW = os::ERR_NOMEM + 1;
+    static const uint32 ERR_HOST_NOMEM = ERR_HEAP_OVERFLOW + 1;
 
-    static const uint32 ERR_INV_HEAP_SIZE = 3;
-    static const uint32 ERR_NO_ALGO = 4;
-    static const uint32 ERR_ALGO_INIT = 5;
+    static const uint32 ERR_INV_HEAP_SIZE = ERR_HOST_NOMEM + 1;
+    static const uint32 ERR_NO_ALGO = ERR_INV_HEAP_SIZE + 1;
+    static const uint32 ERR_ALGO_INIT = ERR_NO_ALGO + 1;
+
+}
+
+namespace veil::threading {
+
+    static const uint32 ERR_NO_RES = memory::ERR_NO_ALGO + 1;
+    static const uint32 ERR_DEADLOCK = ERR_NO_RES + 1;
+    static const uint32 ERR_INV_JOIN = ERR_DEADLOCK + 1;
 
 }
 
