@@ -25,8 +25,7 @@
 
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
-
-#include <thread>
+#include "src/os.hpp"
 
 using namespace veil::os;
 
@@ -37,32 +36,90 @@ void OSThread::sleep(uint32 milliseconds) {
 #endif
 }
 
-OSThread::OSThread() : os_thread(nullptr), os_thread_id(0) {}
+OSThread::OSThread() : os_thread(nullptr) {}
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+
 DWORD WINAPI win32_thread_function(void *params) {
     auto *callable = (veil::vm::Callable *) params;
     callable->run();
     return 0; // We will not use this return value.
 }
+
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+
+void *pthread_thread_function(void *params) {
+    auto *callable = (veil::vm::Callable *) params;
+    callable->run();
+    return nullptr; // We will not use this return value.
+}
+
 #endif
 
-void OSThread::start(vm::Callable &callable) {
+void OSThread::start(vm::Callable &callable, uint32 &error) {
+    error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    LPDWORD _;
     this->os_thread = CreateThread(nullptr,
                                    0,
                                    win32_thread_function,
                                    &callable,
                                    0,
-                                   (LPDWORD) this->os_thread_id);
+                                   _);
+    if (!this->os_thread) {
+        switch (GetLastError()) {
+        case ERROR_NOT_ENOUGH_MEMORY: {
+            error = threading::ERR_NO_RES;
+            return;
+        }
+        default: {
+            std::string filename = __FILE__;
+            std::string function_name = __func__;
+            os::force_exit_on_error("Invalid state of Win32 error.", filename, function_name, __LINE__);
+        }
+        }
+    }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    int pthread_error = pthread_create((pthread_t *) this->os_thread, nullptr, &pthread_thread_function, nullptr);
+    switch (pthread_error) {
+    case 0: return;
+    case EAGAIN: {
+        error = threading::ERR_NO_RES;
+        return;
+    }
+    default: {
+        std::string filename = __FILE__;
+        std::string function_name = __func__;
+        os::force_exit_on_error("Invalid state of pthread error.", filename, function_name, __LINE__);
+    }
+    }
 #   endif
 }
 
-void OSThread::join() {
+void OSThread::join(uint32 &error) {
+    error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    WaitForSingleObject(this->os_thread, INFINITE);
+    DWORD stat = WaitForSingleObject(this->os_thread, INFINITE);
+    // NOTE: The error code of this method is not clear, thus we will use \c threading::ERR_INV_JOIN as a failed status.
+    if (stat == WAIT_FAILED) {
+        error = threading::ERR_INV_JOIN;
+        return;
+    }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    int pthread_error = pthread_join((pthread_t) this->os_thread, nullptr);
+    switch (pthread_error) {
+    case 0: return;
+    case EDEADLK:
+        error = threading::ERR_DEADLOCK;
+        return;
+    case EINVAL:
+        error = threading::ERR_INV_JOIN;
+        return;
+    default: {
+        std::string filename = __FILE__;
+        std::string function_name = __func__;
+        os::force_exit_on_error("Invalid state of pthread error.", filename, function_name, __LINE__);
+    }
+    }
 #   endif
 }

@@ -27,13 +27,12 @@ namespace veil::os {
 
         OSThread();
 
-        void start(vm::Callable &callable);
+        void start(vm::Callable &callable, uint32 &error);
 
-        void join();
+        void join(uint32 &error);
 
     private:
         void *os_thread;
-        uint64 os_thread_id;
     };
 
 }
