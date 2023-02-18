@@ -89,26 +89,21 @@ namespace veil::memory {
         /// The pointer of the parameters (if any) for the chosen \c Algorithm.
         void *algorithm_params;
 
-        /// \param max_heap_size    The maximum utilizable memory managed by the memory management, this includes the
-        ///                         heap memory and the stack memory for each of the VM threads.
+        /// \param algorithm The memory management algorithm to be used in the current \c Management object.
         /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
-        explicit MemoryInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
+        explicit MemoryInitRequest(Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
     struct AlgorithmInitRequest : vm::Request {
         /// The premature \c Management object to be initialized by the chosen \c Algorithm to install
         /// algorithm-specific structures.
         Management *management;
-        /// The maximum utilizable memory managed by the memory management, this includes the heap memory and the stack
-        /// memory for each of the VM threads.
-        uint64 max_heap_size;
         /// The pointer of the parameters (if any) for the chosen \c Algorithm.
         void *algorithm_params;
 
         /// \param management       The premature \c Management object to be initialized by the chosen \c Algorithm.
-        /// \param max_heap_size    The maximum utilizable memory managed by the memory management.
         /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
-        AlgorithmInitRequest(Management *management, uint64 max_heap_size, void *algorithm_params);
+        AlgorithmInitRequest(Management *management, void *algorithm_params);
     };
 
     /// The interface for implementing a memory management algorithm to be used by the memory management of the virtual
@@ -277,7 +272,8 @@ namespace veil::memory {
     // TODO: Add documentations.
     class Management : memory::HeapObject, vm::RequestConsumer, vm::Constituent<Runtime> {
     public:
-        // TODO: Add documentations.
+        /// The maximum utilizable heap memory managed by the memory management, this is padded with extra bits to be
+        /// commensurate with the system page size.
         const uint64 MAX_HEAP_SIZE;
 
         /// \brief Construct a new instance of memory management.
