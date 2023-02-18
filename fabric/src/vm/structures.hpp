@@ -46,9 +46,6 @@ namespace veil::vm {
     };
 
     class RequestConsumer {
-    public:
-        virtual std::string get_error_info(uint32 status) = 0;
-
     protected:
         static void set_error(Request &request, uint32 error) {
             request.error = error;
