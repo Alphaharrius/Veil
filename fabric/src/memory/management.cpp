@@ -16,7 +16,6 @@
 #include "src/memory/management.hpp"
 #include "src/errors.hpp"
 #include "src/memory/os.hpp"
-#include "src/memory/config.hpp"
 
 using namespace veil::memory;
 
@@ -34,8 +33,8 @@ Management *Management::new_instance(Runtime &runtime, MemoryInitRequest &reques
 
     uint32 host_page_size = os::get_page_size();
     // Ensure that the max heap size is a multiple of the host page size.
-    uint64 max_heap_size = config::max_heap_size % host_page_size ?
-                           config::max_heap_size + host_page_size : config::max_heap_size;
+    uint64 max_heap_size = request.max_heap_size % host_page_size ?
+                           request.max_heap_size + host_page_size : request.max_heap_size;
     // Ensure the adjusted max heap size is supported by the algorithm.
     if (max_heap_size > request.algorithm->max_supported_heap_size()) {
         vm::RequestConsumer::set_error(request, memory::ERR_INV_HEAP_SIZE);
@@ -82,10 +81,8 @@ void Management::heap_map(HeapMapRequest &request) {
 
 Pointer::Pointer(uint32 size) : size(size) {}
 
-MemoryInitRequest::MemoryInitRequest(
-        Algorithm *algorithm,
-        void *algorithm_params) :
-        algorithm(algorithm), algorithm_params(algorithm_params) {}
+MemoryInitRequest::MemoryInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params) :
+        max_heap_size(max_heap_size), algorithm(algorithm), algorithm_params(algorithm_params) {}
 
 AllocateRequest::AllocateRequest(uint64 size) : size(size) {}
 

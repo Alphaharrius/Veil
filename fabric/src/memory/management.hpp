@@ -81,14 +81,18 @@ namespace veil::memory {
 
     /// The request as a parameter to initialize the memory management and provide params for the chosen \c Algorithm.
     struct MemoryInitRequest : public vm::Request {
+        /// The maximum utilizable heap memory managed by the memory management, this is padded with extra bits to be
+        /// commensurate with the system page size.
+        uint64 max_heap_size;
         /// The memory management algorithm to be used in the current \c Management object.
         Algorithm *algorithm;
         /// The pointer of the parameters (if any) for the chosen \c Algorithm.
         void *algorithm_params;
 
+        /// \param max_heap_size The maximum utilizable heap memory managed by the memory management.
         /// \param algorithm The memory management algorithm to be used in the current \c Management object.
         /// \param algorithm_params The pointer of the parameters (if any) for the chosen \c Algorithm.
-        explicit MemoryInitRequest(Algorithm *algorithm, void *algorithm_params = nullptr);
+        explicit MemoryInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
     struct AlgorithmInitRequest : vm::Request {
