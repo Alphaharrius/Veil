@@ -23,6 +23,8 @@ namespace veil::os {
 
     class OSThread : public memory::ValueObject {
     public:
+        enum Status {Idle, Started, Joined};
+
         static void sleep(uint32 milliseconds);
 
         OSThread();
@@ -33,8 +35,11 @@ namespace veil::os {
 
         void join(uint32 &error);
 
+        Status get_status();
+
     private:
         void *os_thread;
+        Status status;
     };
 
     class OSMutex : public memory::ValueObject {

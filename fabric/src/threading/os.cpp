@@ -27,6 +27,8 @@
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
 #include "src/vm/os.hpp"
+#include "src/memory/global.hpp"
+#include "src/memory/os.hpp"
 
 using namespace veil::os;
 
@@ -34,23 +36,13 @@ void OSThread::sleep(uint32 milliseconds) {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     Sleep(milliseconds);
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    ::sleep(milliseconds);
+    ::usleep(milliseconds * 1000);
 #endif
 }
 
-OSThread::OSThread() : os_thread(nullptr) {}
+OSThread::OSThread() : os_thread(nullptr), status(Status::Idle) {}
 
-OSThread::~OSThread() {
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    DWORD status = CloseHandle(this->os_thread);
-    if (status)
-        // NOTE: The type of error here is not important.
-        VeilForceExitOnError("CloseHandle failed.");
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    // Implementation for pthread is not needed as pthread_join already deleted thread.
-    bool _; // Dummy added to remove compiler warning.
-#   endif
-}
+OSThread::~OSThread() { os::free((pthread_t *) this->os_thread); }
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
@@ -71,6 +63,11 @@ void *pthread_thread_function(void *params) {
 #endif
 
 void OSThread::start(vm::Callable &callable, uint32 &error) {
+    if (this->status == Status::Started)
+        VeilExitOnImplementationFault("Starting a started thread.");
+    if (this->status == Status::Joined)
+        VeilExitOnImplementationFault("Starting a joined thread.");
+
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     LPDWORD _;
@@ -92,48 +89,69 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
         }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    int status = pthread_create((pthread_t *) this->os_thread, nullptr, &pthread_thread_function, nullptr);
-    if (!status) return;
-
-    switch (errno) {
-    case EAGAIN: {
-        error = threading::ERR_NO_RES;
-        return;
-    }
-    default: VeilForceExitOnError("Invalid state of pthread error.");
+    if (this->os_thread == nullptr)
+        this->os_thread = os::malloc(sizeof(pthread_t));
+    int os_status = pthread_create((pthread_t *) this->os_thread, nullptr, &pthread_thread_function, &callable);
+    if (os_status) {
+        switch (errno) {
+        case EAGAIN: {
+            error = threading::ERR_NO_RES;
+            return;
+        }
+        default: VeilForceExitOnError("Invalid state of pthread error.");
+        }
     }
 #   endif
+    this->status = Status::Started;
 }
 
 void OSThread::join(uint32 &error) {
+    if (this->status != Status::Started)
+        VeilExitOnImplementationFault("Thread joined before started.");
+
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    DWORD stat = WaitForSingleObject(this->os_thread, INFINITE);
+    DWORD os_status = WaitForSingleObject(this->os_thread, INFINITE);
     // NOTE: The error code of this method is not clear, thus we will use \c threading::ERR_INV_JOIN as a failed status.
-    if (stat == WAIT_FAILED) {
+    if (os_status == WAIT_FAILED) {
         error = threading::ERR_INV_JOIN;
         return;
     }
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    int status = pthread_join((pthread_t) this->os_thread, nullptr);
-    if (!status) return;
+    this->status = Status::Joined;
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
+    os_status = CloseHandle(this->os_thread);
+    if (os_status) return;
 
-    switch (errno) {
-    case 0: return;
-    case EDEADLK:error = threading::ERR_DEADLOCK;
-        return;
-    case EINVAL:error = threading::ERR_INV_JOIN;
-        return;
-    default: VeilForceExitOnError("Invalid state of pthread error.");
+    char message[64];
+    ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
+    VeilForceExitOnError("CloseHandle failed on error code ().");
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    int os_status = pthread_join((pthread_t) *((pthread_t *) this->os_thread), nullptr);
+    if (os_status) {
+        switch (errno) {
+        case 0: return;
+        case EDEADLK:error = threading::ERR_DEADLOCK;
+            return;
+        case EINVAL:error = threading::ERR_INV_JOIN;
+            return;
+        default: VeilForceExitOnError("Invalid state of pthread error.");
+        }
     }
 #   endif
+    this->status = Status::Idle;
+}
+
+OSThread::Status OSThread::get_status() {
+    return this->status;
 }
 
 OSMutex::OSMutex() : os_mutex(nullptr) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // HANDLE is a typedef from (void *)
     this->os_mutex = CreateMutexA(nullptr, false, nullptr);
-    if (!this->os_mutex) return;
+    if (this->os_mutex != nullptr)
+        return;
 
     DWORD error = GetLastError();
     switch (error) {
@@ -148,6 +166,7 @@ OSMutex::OSMutex() : os_mutex(nullptr) {
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_init.html
+    this->os_mutex = os::malloc(sizeof(pthread_mutex_t));
     int status = pthread_mutex_init((pthread_mutex_t *) this->os_mutex, nullptr);
     if (!status) return;
 
@@ -167,25 +186,27 @@ OSMutex::~OSMutex() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
     DWORD status = CloseHandle(this->os_mutex);
-    if (!status) return;
+    if (status) return;
 
-    switch (GetLastError()) {
+    DWORD error = GetLastError();
+    switch (error) {
     // The mutex is always initialized as it is being done in the constructor.
     case ERROR_INVALID_HANDLE: VeilForceExitOnError("Should not reach here.");
     default:
         char message[64];
-        ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
+        ::sprintf(message, "CloseHandle failed on error code (%d).", (int) error);
         VeilForceExitOnError(message);
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_destroy.html
     int status = pthread_mutex_destroy((pthread_mutex_t *) this->os_mutex);
+    os::free((pthread_mutex_t *) this->os_mutex);
     if (!status) return;
 
-    switch(errno) {
-    // This case will be raised as critical error as all mutex usage should be properly handled in the higher
-    // abstraction level.
+    switch (errno) {
+        // This case will be raised as critical error as all mutex usage should be properly handled in the higher
+        // abstraction level.
     case EBUSY: VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
     case EINVAL: // The mutex is always initialized as it is being done in the constructor.
     default: VeilForceExitOnError("Should not reach here.");
@@ -216,8 +237,7 @@ void OSMutex::lock() {
 
     switch (errno) {
     case EDEADLK: VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
-    case EAGAIN:
-        VeilForceExitOnError(
+    case EAGAIN:VeilForceExitOnError(
                 "The mutex could not be locked because the maximum number of recursive locks for mutex has been "
                 "exceeded.");
     case EINVAL:
@@ -242,8 +262,7 @@ void OSMutex::unlock() {
 
     switch (errno) {
     case EPERM: VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
-    case EAGAIN:
-        VeilForceExitOnError(
+    case EAGAIN:VeilForceExitOnError(
                 "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
                 "exceeded.");
     case EINVAL:
