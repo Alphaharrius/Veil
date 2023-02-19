@@ -193,7 +193,7 @@ OSMutex::~OSMutex() {
 #   endif
 }
 
-void OSMutex::lock(uint32 &error) {
+void OSMutex::lock() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     DWORD status = WaitForSingleObject(this->os_mutex, INFINITE);
     switch (status) {
@@ -226,7 +226,7 @@ void OSMutex::lock(uint32 &error) {
 #   endif
 }
 
-void OSMutex::unlock(uint32 &error) {
+void OSMutex::unlock() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     bool success = ReleaseMutex(this->os_mutex);
     if (success) return;

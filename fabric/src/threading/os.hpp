@@ -43,9 +43,9 @@ namespace veil::os {
 
         ~OSMutex();
 
-        void lock(uint32 &error);
+        void lock();
 
-        void unlock(uint32 &error);
+        void unlock();
 
     private:
         void *os_mutex;
