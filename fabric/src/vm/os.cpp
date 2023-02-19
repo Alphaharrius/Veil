@@ -15,12 +15,12 @@
 
 #include <iostream>
 
-#include "src/os.hpp"
-#include "src/errors.hpp"
+#include "os.hpp"
+#include "errors.hpp"
 #include "src/veil.hpp"
 
 void veil::os::force_exit_on_error(
-        const std::string &reason, std::string &filename, std::string &function_name, uint32 line_number) {
+        const char *reason, const char *filename, const char *function_name, uint32 line_number) {
     std::cerr << "A critical error is detected by the runtime environment:" << std::endl
               << "Reason: " << reason << std::endl
               << "At: " << function_name << " (" << filename << ": " << line_number << ")" << std::endl

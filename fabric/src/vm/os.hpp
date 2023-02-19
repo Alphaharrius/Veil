@@ -13,19 +13,18 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_FABRIC_SRC_OS_HPP
-#define VEIL_FABRIC_SRC_OS_HPP
+#ifndef VEIL_FABRIC_SRC_VM_OS_HPP
+#define VEIL_FABRIC_SRC_VM_OS_HPP
 
 #include <cstdlib>
 
 #include "src/typedefs.hpp"
-#include "src/vm/structures.hpp"
 
 namespace veil::os {
 
     void force_exit_on_error(
-            const std::string &reason, std::string &filename, std::string &function_name, uint32 line_number);
+            const char *reason, const char *filename, const char *function_name, uint32 line_number);
 
 }
 
-#endif //VEIL_FABRIC_SRC_OS_HPP
+#endif //VEIL_FABRIC_SRC_VM_OS_HPP
