@@ -95,6 +95,8 @@ namespace veil::memory {
         explicit MemoryInitRequest(uint64 max_heap_size, Algorithm *algorithm, void *algorithm_params = nullptr);
     };
 
+    /// The request as a parameter to initialize the memory management algorithm, with attributes as a subset of
+    /// \c MemoryInitRequest to avoid unexpected dataflow in the instantiation procedure.
     struct AlgorithmInitRequest : vm::Request {
         /// The premature \c Management object to be initialized by the chosen \c Algorithm to install
         /// algorithm-specific structures.
