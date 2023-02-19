@@ -16,7 +16,7 @@
 #ifndef VEIL_FABRIC_SRC_THREADING_OS_HPP
 #define VEIL_FABRIC_SRC_THREADING_OS_HPP
 
-#include "src/memory/memory.hpp"
+#include "src/memory/global.hpp"
 #include "src/vm/structures.hpp"
 
 namespace veil::os {

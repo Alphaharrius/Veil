@@ -19,7 +19,7 @@
 #include "src/typedefs.hpp"
 #include "src/vm/structures.hpp"
 #include "src/core/runtime.forward.hpp"
-#include "src/memory/memory.hpp"
+#include "src/memory/global.hpp"
 #include "src/memory/management.hpp"
 #include "src/threading/management.hpp"
 

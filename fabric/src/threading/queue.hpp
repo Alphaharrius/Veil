@@ -20,7 +20,7 @@
 #include <condition_variable>
 
 #include "src/typedefs.hpp"
-#include "src/memory/memory.hpp"
+#include "src/memory/global.hpp"
 
 namespace veil::threading {
 

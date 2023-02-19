@@ -20,7 +20,7 @@
 
 #include "src/typedefs.hpp"
 #include "src/vm/errors.hpp"
-#include "src/memory/memory.hpp"
+#include "src/memory/global.hpp"
 #include "src/vm/os.hpp"
 
 namespace veil::vm {

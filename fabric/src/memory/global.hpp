@@ -13,8 +13,8 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef VEIL_FABRIC_SRC_MEMORY_MEMORY_HPP
-#define VEIL_FABRIC_SRC_MEMORY_MEMORY_HPP
+#ifndef VEIL_FABRIC_SRC_MEMORY_GLOBAL_HPP
+#define VEIL_FABRIC_SRC_MEMORY_GLOBAL_HPP
 
 #include "src/typedefs.hpp"
 
@@ -162,4 +162,4 @@ namespace veil::memory {
 
 }
 
-#endif //VEIL_FABRIC_SRC_MEMORY_MEMORY_HPP
+#endif //VEIL_FABRIC_SRC_MEMORY_GLOBAL_HPP

@@ -15,7 +15,7 @@
 
 #include <cassert>
 
-#include "src/memory/memory.hpp"
+#include "src/memory/global.hpp"
 #include "src/memory/os.hpp"
 
 using namespace veil::memory;
