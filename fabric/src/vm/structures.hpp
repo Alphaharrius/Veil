@@ -19,8 +19,9 @@
 #include <string>
 
 #include "src/typedefs.hpp"
-#include "src/errors.hpp"
+#include "src/vm/errors.hpp"
 #include "src/memory/memory.hpp"
+#include "src/vm/os.hpp"
 
 namespace veil::vm {
 

@@ -16,7 +16,8 @@
 #include <string>
 
 #include "src/memory/os.hpp"
-#include "src/os.hpp"
+#include "src/vm/os.hpp"
+#include "src/vm/errors.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 

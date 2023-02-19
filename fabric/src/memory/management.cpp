@@ -14,7 +14,7 @@
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "src/memory/management.hpp"
-#include "src/errors.hpp"
+#include "src/vm/errors.hpp"
 #include "src/memory/os.hpp"
 
 using namespace veil::memory;

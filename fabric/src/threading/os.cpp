@@ -26,7 +26,7 @@
 
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
-#include "src/os.hpp"
+#include "src/vm/os.hpp"
 
 using namespace veil::os;
 
@@ -89,11 +89,8 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
         error = threading::ERR_NO_RES;
         return;
     }
-    default: {
-        std::string filename = __FILE__;
-        std::string function_name = __func__;
-        os::force_exit_on_error("Invalid state of pthread error.", filename, function_name, __LINE__);
-    }
+    default:
+        os::force_exit_on_error("Invalid state of pthread error.", __FILE__, __func__, __LINE__);
     }
 #   endif
 }
@@ -117,11 +114,8 @@ void OSThread::join(uint32 &error) {
     case EINVAL:
         error = threading::ERR_INV_JOIN;
         return;
-    default: {
-        std::string filename = __FILE__;
-        std::string function_name = __func__;
-        os::force_exit_on_error("Invalid state of pthread error.", filename, function_name, __LINE__);
-    }
+    default:
+        os::force_exit_on_error("Invalid state of pthread error.", __FILE__, __func__, __LINE__);
     }
 #   endif
 }
