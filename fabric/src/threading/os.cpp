@@ -42,7 +42,12 @@ void OSThread::sleep(uint32 milliseconds) {
 
 OSThread::OSThread() : os_thread(nullptr), status(Status::Idle) {}
 
-OSThread::~OSThread() { os::free((pthread_t *) this->os_thread); }
+OSThread::~OSThread() {
+#   if defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Free the memory allocated for the pthread_t as a thread index.
+    os::free((pthread_t *) this->os_thread);
+#   endif
+}
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
@@ -89,6 +94,9 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
         }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Allocate the memory for a pthread_t which is an integer holding the thread index, else it will result in
+    // segmentation fault. This piece of memory will not be freed even after this OSThread is joined as it can be
+    // reused, this will be freed in the destructor.
     if (this->os_thread == nullptr)
         this->os_thread = os::malloc(sizeof(pthread_t));
     int os_status = pthread_create((pthread_t *) this->os_thread, nullptr, &pthread_thread_function, &callable);
@@ -166,6 +174,8 @@ OSMutex::OSMutex() : os_mutex(nullptr) {
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_init.html
+    // Allocate the memory for pthread_mutex_t structure before mutex initialization, or will result in segmentation
+    // fault, this memory will be freed in destructor.
     this->os_mutex = os::malloc(sizeof(pthread_mutex_t));
     int status = pthread_mutex_init((pthread_mutex_t *) this->os_mutex, nullptr);
     if (!status) return;
