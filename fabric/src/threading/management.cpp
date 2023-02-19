@@ -27,13 +27,13 @@ void VMThread::start(vm::Request &request) {
     vm::Constituent<Runtime>::root->vm::Composite<threading::Management>::get_composition()->register_thread(*this);
     uint32 error;
     embedded.start(*this, error);
-    vm::RequestConsumer::set_error(request, error);
+    vm::RequestExecutor::set_error(request, error);
 }
 
 void VMThread::join(vm::Request &request) {
     uint32 error;
     embedded.join(error);
-    vm::RequestConsumer::set_error(request, error);
+    vm::RequestExecutor::set_error(request, error);
 }
 
 void VMThread::interrupt() {

@@ -27,7 +27,7 @@ Allocator *Management::create_allocator(vm::Request &request) {
 
 Management *Management::new_instance(Runtime &runtime, MemoryInitRequest &request) {
     if (!request.algorithm) {
-        vm::RequestConsumer::set_error(request, memory::ERR_NO_ALGO);
+        vm::RequestExecutor::set_error(request, memory::ERR_NO_ALGO);
         return nullptr;
     }
 
@@ -37,7 +37,7 @@ Management *Management::new_instance(Runtime &runtime, MemoryInitRequest &reques
                            request.max_heap_size + host_page_size : request.max_heap_size;
     // Ensure the adjusted max heap size is supported by the algorithm.
     if (max_heap_size > request.algorithm->max_supported_heap_size()) {
-        vm::RequestConsumer::set_error(request, memory::ERR_INV_HEAP_SIZE);
+        vm::RequestExecutor::set_error(request, memory::ERR_INV_HEAP_SIZE);
         return nullptr;
     }
 
@@ -49,7 +49,7 @@ Management *Management::new_instance(Runtime &runtime, MemoryInitRequest &reques
         // The management object can be deleted directly as the only injected allocated memory is stored within
         // Management::structure, which is not allocated in case of failure.
         delete management;
-        vm::RequestConsumer::set_error(request, algo_request.get_error());
+        vm::RequestExecutor::set_error(request, algo_request.get_error());
         return nullptr;
     }
     return management;
@@ -67,13 +67,13 @@ void Management::heap_map(HeapMapRequest &request) {
     uint64 current_mapped_size = this->mapped_heap_size.fetch_add(request.size);
     // The total mapped size from the host should not be greater than the limit.
     if (current_mapped_size > this->MAX_HEAP_SIZE) {
-        vm::RequestConsumer::set_error(request, memory::ERR_HEAP_OVERFLOW);
+        vm::RequestExecutor::set_error(request, memory::ERR_HEAP_OVERFLOW);
         return;
     }
     uint32 error;
     request.address = static_cast<uint8 *>(os::mmap(nullptr, request.size, true, true, error));
     switch (error) {
-    case os::ERR_NOMEM: vm::RequestConsumer::set_error(request, memory::ERR_HOST_NOMEM);
+    case os::ERR_NOMEM: vm::RequestExecutor::set_error(request, memory::ERR_HOST_NOMEM);
     case veil::ERR_NONE:
     default: break;
     }

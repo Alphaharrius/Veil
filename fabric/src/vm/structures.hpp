@@ -24,7 +24,7 @@
 
 namespace veil::vm {
 
-    class RequestConsumer;
+    class RequestExecutor;
 
     class Request : public memory::ValueObject {
     public:
@@ -42,10 +42,10 @@ namespace veil::vm {
     protected:
         uint32 error;
 
-        friend class RequestConsumer;
+        friend class RequestExecutor;
     };
 
-    class RequestConsumer {
+    class RequestExecutor {
     protected:
         static void set_error(Request &request, uint32 error) {
             request.error = error;

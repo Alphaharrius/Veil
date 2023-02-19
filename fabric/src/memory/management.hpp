@@ -128,7 +128,7 @@ namespace veil::memory {
     ///     <li> The maximum memory size associated with a \c Pointer must not exceed 4GiB, allocation larger than this
     ///          should be handled beyond the management algorithm. </li>
     /// </ul>
-    class Algorithm : public vm::RequestConsumer, public memory::ValueObject {
+    class Algorithm : public vm::RequestExecutor, public memory::ValueObject {
     public:
         /// \brief Provides the name of the algorithm.
         /// \attention This name will be logged by the runtime logger if necessary.
@@ -184,7 +184,7 @@ namespace veil::memory {
     /// attributes to perform any "local" action. The suggested style of implementing this function is to create a
     /// subclass of \c Allocator, then define the algorithm specific structures in the subclass, then cast into a
     /// pointer of \c Allocator as the return object type.
-    class Allocator : public vm::RequestConsumer, vm::Constituent<Management> {
+    class Allocator : public vm::RequestExecutor, vm::Constituent<Management> {
     public:
         /// \param management The root \c Management of this instance.
         explicit Allocator(Management &management);
@@ -248,7 +248,7 @@ namespace veil::memory {
     };
 
     // TODO: Add documentations.
-    class Management : memory::HeapObject, vm::RequestConsumer, vm::Constituent<Runtime> {
+    class Management : memory::HeapObject, vm::RequestExecutor, vm::Constituent<Runtime> {
     public:
         /// The maximum utilizable heap memory managed by the memory management, this is padded with extra bits to be
         /// commensurate with the system page size.
