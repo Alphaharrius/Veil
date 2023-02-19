@@ -34,9 +34,22 @@ using namespace veil::os;
 
 void OSThread::sleep(uint32 milliseconds) {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep
     Sleep(milliseconds);
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    ::usleep(milliseconds * 1000);
+    // Implementation of the following have taken reference from:
+    // https://man7.org/linux/man-pages/man3/usleep.3.html
+    // This method sleep a period with precision of microseconds, according to the documentation this method will fail
+    // if the host os doesn't support a sleep period of more than 1000000ms.
+    if (::usleep(milliseconds) != 0 && errno == EINVAL) {
+        uint32 microseconds = milliseconds * 1000;
+        uint32 loop_count = microseconds / 1000000;
+        while (loop_count--) {
+            ::usleep(1000000);
+        }
+        ::usleep(microseconds % 1000000);
+    }
 #endif
 }
 
