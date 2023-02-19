@@ -62,6 +62,11 @@ OSThread::~OSThread() {
 #   endif
 }
 
+// Functions to be used for Win32 & pthread calls respectively, Win32 strictly requires the macro of WINAPI which refers
+// to the __stdcall binary calling convention and a return value of DWORD; the requirement of pthread is simpler with a
+// return value of (void *). In both cases we will use vm::Callable as a delegate encapsulation of the custom logic we
+// would like to run in the thread.
+
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
 DWORD WINAPI win32_thread_function(void *params) {
@@ -88,14 +93,16 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
 
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
     LPDWORD _;
     // HANDLE is a typedef from (void *).
-    this->os_thread = CreateThread(nullptr,
-                                   0,
+    this->os_thread = CreateThread(nullptr, // Using default security attributes.
+                                   0, // Using default stack size which is 1MB (Shall this be a parameter?).
                                    win32_thread_function,
                                    &callable,
-                                   0,
-                                   _);
+                                   0, // Start the thread immediately.
+                                   _); // We don't need the thread id.
     if (!this->os_thread) {
         switch (GetLastError()) {
         case ERROR_NOT_ENOUGH_MEMORY: {
@@ -107,6 +114,9 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
         }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://man7.org/linux/man-pages/man3/pthread_create.3.html
+
     // Allocate the memory for a pthread_t which is an integer holding the thread index, else it will result in
     // segmentation fault. This piece of memory will not be freed even after this OSThread is joined as it can be
     // reused, this will be freed in the destructor.
@@ -132,6 +142,8 @@ void OSThread::join(uint32 &error) {
 
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject
     DWORD os_status = WaitForSingleObject(this->os_thread, INFINITE);
     // NOTE: The error code of this method is not clear, thus we will use \c threading::ERR_INV_JOIN as a failed status.
     if (os_status == WAIT_FAILED) {
@@ -148,6 +160,8 @@ void OSThread::join(uint32 &error) {
     ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
     VeilForceExitOnError("CloseHandle failed on error code ().");
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://man7.org/linux/man-pages/man3/pthread_join.3.html
     int os_status = pthread_join((pthread_t) *((pthread_t *) this->os_thread), nullptr);
     if (os_status) {
         switch (errno) {
@@ -169,6 +183,9 @@ OSThread::Status OSThread::get_status() {
 
 OSMutex::OSMutex() : os_mutex(nullptr) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createmutexa
+
     // HANDLE is a typedef from (void *)
     this->os_mutex = CreateMutexA(nullptr, false, nullptr);
     if (this->os_mutex != nullptr)
@@ -187,6 +204,7 @@ OSMutex::OSMutex() : os_mutex(nullptr) {
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_init.html
+
     // Allocate the memory for pthread_mutex_t structure before mutex initialization, or will result in segmentation
     // fault, this memory will be freed in destructor.
     this->os_mutex = os::malloc(sizeof(pthread_mutex_t));
@@ -271,6 +289,8 @@ void OSMutex::lock() {
 
 void OSMutex::unlock() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasemutex
     bool success = ReleaseMutex(this->os_mutex);
     if (success) return;
 
