@@ -27,12 +27,28 @@ namespace veil::os {
 
         OSThread();
 
+        ~OSThread();
+
         void start(vm::Callable &callable, uint32 &error);
 
         void join(uint32 &error);
 
     private:
         void *os_thread;
+    };
+
+    class OSMutex : public memory::ValueObject {
+    public:
+        OSMutex();
+
+        ~OSMutex();
+
+        void lock(uint32 &error);
+
+        void unlock(uint32 &error);
+
+    private:
+        void *os_mutex;
     };
 
 }
