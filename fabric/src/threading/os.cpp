@@ -27,7 +27,6 @@
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
 #include "src/vm/os.hpp"
-#include "src/memory/global.hpp"
 #include "src/memory/os.hpp"
 
 using namespace veil::os;
