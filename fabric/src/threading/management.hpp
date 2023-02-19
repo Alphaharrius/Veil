@@ -42,7 +42,6 @@ namespace veil::threading {
 
     private:
         os::OSThread embedded;
-
         std::atomic_bool interrupted;
     };
 
