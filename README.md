@@ -47,6 +47,7 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
 
 4. [ ] Exchange all existing usage of ```<atomic>``` to the encapsulations.
     - [ ] ```Queue```
+        - Suspect the use of mutex only can power the ```Queue```.
 
 5. [ ] Implement the thread management.
     - [ ] All management's functionality should be protected by a mutex.
