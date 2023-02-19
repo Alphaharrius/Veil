@@ -85,7 +85,9 @@ namespace veil::vm {
     template<class C>
     class Composite {
     public:
-        explicit Composite(C &composition) : composition(&composition) {}
+        Composite() : composition(nullptr) {}
+
+        void bind(C &composition);
 
         C *get_composition();
 
@@ -95,7 +97,16 @@ namespace veil::vm {
 
     template<class C>
     C *Composite<C>::get_composition() {
-        return composition;
+        if (!this->composition)
+            VeilExitOnImplementationFault("Access composition before registering one.");
+        return this->composition;
+    }
+
+    template<class C>
+    void Composite<C>::bind(C &c) {
+        if (this->composition)
+            VeilExitOnImplementationFault("Registering a registered composition.");
+        this->composition = &c;
     }
 
     class Callable {
