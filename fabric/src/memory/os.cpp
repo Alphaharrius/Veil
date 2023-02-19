@@ -45,12 +45,8 @@ void *veil::os::malloc(uint64 size) {
     // If malloc returns nullptr, it is possible that the host os is unable to sustain the runtime, in which the
     // termination procedure is unlikely to be executed.
     // NOTE: This error will most likely not happening.
-    if (!address) {
-        std::string reason = "Host process is short in heap memory.";
-        std::string filename = __FILE__;
-        std::string function_name = __func__;
-        veil::os::force_exit_on_error(reason, filename, function_name, __LINE__);
-    }
+    if (!address)
+        veil::os::force_exit_on_error("Host process is short in heap memory.", __FILE__, __func__, __LINE__);
     return static_cast<uint8 *>(address);
 }
 
