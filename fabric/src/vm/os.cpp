@@ -21,7 +21,7 @@
 
 void veil::os::force_exit_on_error(
         const char *reason, const char *filename, const char *function_name, uint32 line_number) {
-    std::cerr << "A critical error is detected by the runtime environment:" << std::endl
+    std::cerr << "A critical error is detected by the runtime environment!" << std::endl
               << "Reason: " << reason << std::endl
               << "At: " << function_name << " (" << filename << ": " << line_number << ")" << std::endl
               << "Runtime: " << veil::VM_NAME << " version(" << veil::VM_VERSION << ")" << std::endl;

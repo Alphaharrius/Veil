@@ -26,14 +26,15 @@
 namespace veil::vm {
 
     /// Place this macro with proper reason if a fault state happens due to VM implementation instead of runtime events.
-#   define VeilExitOnImplementationFault(reason) veil::os::force_exit_on_error(reason, __FILE__, __func__, __LINE__)
+#   define VeilExitOnImplementationFault(reason) \
+        veil::os::force_exit_on_error("ImplementationFault(" reason ")", __FILE__, __func__, __LINE__)
 
     class RequestExecutor;
 
     class Request : public memory::ValueObject {
     public:
 
-        Request(): error(ERR_NONE) {}
+        Request() : error(ERR_NONE) {}
 
         [[nodiscard]] bool is_ok() const {
             return this->error == ERR_NONE;
@@ -66,7 +67,7 @@ namespace veil::vm {
         std::string name;
     };
 
-    template <class R>
+    template<class R>
     class Constituent {
     public:
         explicit Constituent(R &root);
