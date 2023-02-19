@@ -18,7 +18,7 @@
 
 namespace veil {
 
-    static const char *VM_NAME = "Veil Fabric Runtime";
+    static const char *VM_NAME = "Veil Fabric 64-bit Runtime";
     static const char *VM_VERSION = "0.0.1b";
 
 }
