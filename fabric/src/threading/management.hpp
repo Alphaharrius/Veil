@@ -26,13 +26,14 @@
 namespace veil::threading {
 
     class VMThread :
-            public vm::Constituent<Runtime>, public memory::HeapObject, private veil::vm::Callable, public vm::HasName {
+            public memory::HeapObject, public vm::Constituent<Runtime>, public vm::RequestConsumer,
+            private veil::vm::Callable, public vm::HasName {
     public:
         explicit VMThread(std::string &name, Runtime &runtime);
 
-        void start();
+        void start(vm::Request &request);
 
-        void join();
+        void join(vm::Request &request);
 
         void interrupt();
 
@@ -49,7 +50,7 @@ namespace veil::threading {
     private:
         void register_thread(VMThread &thread);
 
-        friend void VMThread::start();
+        friend void VMThread::start(vm::Request &request);
     };
 
 }

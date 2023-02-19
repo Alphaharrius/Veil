@@ -22,14 +22,18 @@ VMThread::VMThread(std::string &name, Runtime &runtime) : vm::Constituent<Runtim
                                                           vm::HasName(name),
                                                           interrupted(false) {}
 
-void VMThread::start() {
+void VMThread::start(vm::Request &request) {
     // Register a VM thread when it starts, so the threading management can manage its life cycle.
     vm::Constituent<Runtime>::root->vm::Composite<threading::Management>::get_composition()->register_thread(*this);
-    embedded.start(*this);
+    uint32 error;
+    embedded.start(*this, error);
+    vm::RequestConsumer::set_error(request, error);
 }
 
-void VMThread::join() {
-    embedded.join();
+void VMThread::join(vm::Request &request) {
+    uint32 error;
+    embedded.join(error);
+    vm::RequestConsumer::set_error(request, error);
 }
 
 void VMThread::interrupt() {
