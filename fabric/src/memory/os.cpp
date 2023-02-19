@@ -46,7 +46,7 @@ void *veil::os::malloc(uint64 size) {
     // termination procedure is unlikely to be executed.
     // NOTE: This error will most likely not happening.
     if (!address)
-        veil::os::force_exit_on_error("Host process is short in heap memory.", __FILE__, __func__, __LINE__);
+        VeilForceExitOnError("Host process is short in heap memory.");
     return static_cast<uint8 *>(address);
 }
 

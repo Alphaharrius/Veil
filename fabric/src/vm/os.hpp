@@ -25,6 +25,8 @@ namespace veil::os {
     void force_exit_on_error(
             const char *reason, const char *filename, const char *function_name, uint32 line_number);
 
+#   define VeilForceExitOnError(reason) veil::os::force_exit_on_error(reason, __FILE__, __func__, __LINE__)
+
 }
 
 #endif //VEIL_FABRIC_SRC_VM_OS_HPP
