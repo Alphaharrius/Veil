@@ -9,9 +9,9 @@ add_executable(
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/os.hpp fabric/src/os.cpp
+        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
         fabric/src/vm/resource.hpp
-        fabric/src/errors.hpp
+        fabric/src/vm/errors.hpp
         fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
         fabric/src/memory/memory.hpp fabric/src/memory/memory.cpp
         fabric/src/threading/os.cpp fabric/src/threading/os.hpp
@@ -24,9 +24,9 @@ add_executable(
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/os.hpp fabric/src/os.cpp
+        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
         fabric/src/vm/resource.hpp
-        fabric/src/errors.hpp
+        fabric/src/vm/errors.hpp
         fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
         fabric/src/memory/memory.hpp fabric/src/memory/memory.cpp
         fabric/src/threading/os.cpp fabric/src/threading/os.hpp
@@ -39,9 +39,9 @@ add_executable(
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/os.hpp fabric/src/os.cpp
+        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
         fabric/src/vm/resource.hpp
-        fabric/src/errors.hpp
+        fabric/src/vm/errors.hpp
         fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
         fabric/src/memory/memory.hpp fabric/src/memory/memory.cpp
         fabric/src/threading/os.cpp fabric/src/threading/os.hpp
@@ -54,9 +54,9 @@ add_executable(
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/os.hpp fabric/src/os.cpp
+        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
         fabric/src/vm/resource.hpp
-        fabric/src/errors.hpp
+        fabric/src/vm/errors.hpp
         fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
         fabric/src/memory/memory.hpp fabric/src/memory/memory.cpp
         fabric/src/threading/os.cpp fabric/src/threading/os.hpp
