@@ -50,7 +50,9 @@ namespace veil::memory {
         void operator delete[](void *address) = delete;
     };
 
-    /// All VM objects that allocates to a arena-allocator \c TArena should extend this class.
+    /// All VM objects that allocates to a arena-allocator \c TArena should extend this class. For structures or classes
+    /// that contains references to \c HeapObject, be aware that \c TArena<T>::free will attempt to call the destructor
+    /// of all children ( \c ArenaObject ), please check if the resources is properly freed.
     class ArenaObject {
     };
 
@@ -139,7 +141,19 @@ namespace veil::memory {
     T *TArena<T>::inflate() { return embedded.inflate(sizeof(T)); }
 
     template<typename T>
-    void TArena<T>::free() { this->embedded.free(); }
+    void TArena<T>::free() {
+        // The objects contained within the arena might have references to the heap, iteratively call the destructor of
+        // all objects to ensure the resources is properly released.
+        // NOTE: This procedure cannot ensure the resources will be free, some references might not be freed properly in
+        // the destructor of the arena object.
+        TArenaIterator<T> iterator(*this);
+        T *current = iterator.next();
+        while (current != nullptr) {
+            current->~T();
+            current = iterator.next();
+        }
+        this->embedded.free();
+    }
 
     template<typename T>
     class TArenaIterator : public Arena::Iterator {
