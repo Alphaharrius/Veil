@@ -39,15 +39,14 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
 2. [ ] Implement all encapsulations of OS specific threading primitives.
     - [x] ```Thread```
     - [x] ```Mutex```
-    - [ ] ```OSConditionVariable```
+    - [ ] ```ConditionVariable```
+    - [ ] Atomics
 
 3. [ ] Implement VM specific threading primitives.
     - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
-    - [ ] More to be added.
 
-4. [ ] Exchange all existing usage of ```<atomic>``` to the encapsulations.
+4. [ ] Exchange all existing usage of ```<atomic>``` and ```<condition_variable>``` to the encapsulations.
     - [ ] ```Queue```
-        - Suspect the use of mutex alone can already power the ```Queue```.
 
 5. [ ] Implement the thread management.
     - [ ] All management's functionality should be protected by a mutex.
