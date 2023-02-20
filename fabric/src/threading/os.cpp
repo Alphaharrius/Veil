@@ -245,9 +245,10 @@ OSMutex::~OSMutex() {
     if (!status) return;
 
     switch (errno) {
+    case EBUSY:
         // This case will be raised as critical error as all mutex usage should be properly handled in the higher
         // abstraction level.
-    case EBUSY: VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
+        VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
     case EINVAL: // The mutex is always initialized as it is being done in the constructor.
     default: VeilForceExitOnError("Should not reach here.");
     }
@@ -261,9 +262,9 @@ void OSMutex::lock() {
     case WAIT_ABANDONED:
     case WAIT_OBJECT_0: return;
     case WAIT_TIMEOUT: VeilExitOnImplementationFault("Show not reach here as we wait indefinitely.");
-    // NOTE: It is worthy to investigate the set of error given here, but there lacks a function to convert DWORD to
-    // (char *) at this moment.
     case WAIT_FAILED:
+        // NOTE: It is worthy to investigate the set of error given here, but there lacks a function to convert DWORD to
+        // (char *) at this moment.
         char message[64];
         ::sprintf(message, "WaitForSingleObject failed on error code (%d).", (int) GetLastError());
         VeilForceExitOnError(message);
@@ -277,9 +278,7 @@ void OSMutex::lock() {
 
     switch (errno) {
     case EDEADLK: VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
-    case EAGAIN:VeilForceExitOnError(
-                "The mutex could not be locked because the maximum number of recursive locks for mutex has been "
-                "exceeded.");
+    case EAGAIN: VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
     case EINVAL:
     default: VeilExitOnImplementationFault("Should not reach here.");
     }
