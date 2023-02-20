@@ -56,11 +56,10 @@ void Queuee::queue(Queue &queue) {
         if (last_queuee != nullptr) {
             // The current queue is active and waited in a queue.
             this->status = STAT_QUEUE;
-            std::unique_lock<std::mutex> m_lock(last_queuee->blocking_m);
             while (!last_queuee->exit_queue) {
                 // Wait until the last queuee signals the exit of the queue, and check for the valid wakeup condition to
                 // prevent spurious wakeup.
-                last_queuee->blocking_cv.wait(m_lock);
+                last_queuee->blocking_cv.wait();
             }
             // Signal the last queuee that this queuee have been queuee_notified and resume in queue acquisition. The
             // exit procedure of the last queuee will check if this flag is set before exiting its looping call to exit
@@ -105,7 +104,7 @@ bool Queuee::exit(Queue &queue) {
             // Prevent compiler optimization at level o3.
             asm volatile ("");
             // Since there will only be one queuee queued behind, notify_one is sufficient.
-            this->blocking_cv.notify_one();
+            this->blocking_cv.notify();
         }
     }
 

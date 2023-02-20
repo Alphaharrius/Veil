@@ -17,10 +17,10 @@
 #define VEIL_FABRIC_SRC_THREADING_QUEUE_HPP
 
 #include <atomic>
-#include <condition_variable>
 
 #include "src/typedefs.hpp"
 #include "src/memory/global.hpp"
+#include "src/threading/os.hpp"
 
 namespace veil::threading {
 
@@ -84,19 +84,16 @@ namespace veil::threading {
         /// The target queue this instance have been assigned to wait on.
         Queue *target;
 
-        /// The mutex used to block the current thread on state \c STAT_QUEUE with the condition variable \a blocking_cv
-        /// of the prior instance.
-        std::mutex blocking_m;
         /// The condition variable used to block & notify the thread associated with the subsequent instance.
-        std::condition_variable blocking_cv;
+        os::ConditionVariable blocking_cv;
 
         /// A flag as a signal for the subsequent instance to confirm the passing of exclusive access, since spurious
         /// wakeup by condition variable can happen, according to the source
         /// ( https://en.wikipedia.org/wiki/Spurious_wakeup ).
-        bool exit_queue;
+        volatile bool exit_queue;
         /// A flag as a signal for the prior instance to confirm the wakeup of the current instance, thus completes the
         /// transfer of exclusive access.
-        bool queuee_notified;
+        volatile bool queuee_notified;
 
         friend class QueueClient;
     };
