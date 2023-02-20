@@ -37,8 +37,8 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [ ] Implement the standard management algorithm.
 
 2. [ ] Implement all encapsulations of OS specific threading primitives.
-    - [x] ```OSThread```
-    - [x] ```OSMutex```
+    - [x] ```Thread```
+    - [x] ```Mutex```
     - [ ] ```OSConditionVariable```
 
 3. [ ] Implement VM specific threading primitives.
