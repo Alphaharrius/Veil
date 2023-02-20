@@ -52,6 +52,8 @@ namespace veil::os {
 
         void unlock();
 
+        bool is_busy();
+
     private:
         void *os_mutex;
     };
