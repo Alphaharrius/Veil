@@ -101,8 +101,6 @@ bool Queuee::exit(Queue &queue) {
         this->exit_queue = true;
         // Notify the queuee behind until it signals this queuee.
         while (!this->queuee_notified) {
-            // Prevent compiler optimization at level o3.
-            asm volatile ("");
             // Since there will only be one queuee queued behind, notify just one of the waiter is sufficient.
             this->blocking_cv.notify();
         }
