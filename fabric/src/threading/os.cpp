@@ -153,21 +153,19 @@ void Thread::join(uint32 &error) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject
-    DWORD os_status = WaitForSingleObject(this->os_thread, INFINITE);
     // NOTE: The error code of this method is not clear, thus we will use \c threading::ERR_INV_JOIN as a failed status.
-    if (os_status == WAIT_FAILED) {
+    if (WaitForSingleObject(this->os_thread, INFINITE) == WAIT_FAILED) {
         error = threading::ERR_INV_JOIN;
         return;
     }
     this->status = Status::Joined;
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
-    os_status = CloseHandle(this->os_thread);
-    if (os_status) return;
-
-    char message[64];
-    ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
-    VeilForceExitOnError(message);
+    if (!CloseHandle(this->os_thread)) {
+        char message[64];
+        ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
+        VeilForceExitOnError(message);
+    }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://man7.org/linux/man-pages/man3/pthread_join.3.html
@@ -364,15 +362,37 @@ void ConditionVariable::wait() {
 
     // To ensure the condition variable to be checked atomically, we have to lock the associated mutex.
     associate.lock();
-    PCONDITION_VARIABLE cv = &((Win32ConVarStruct *) this->os_cv)->embedded;
-    PCRITICAL_SECTION cs = &((Win32MutexStruct *) associate.os_mutex)->embedded;
-    BOOL success = SleepConditionVariableCS(cv, cs, INFINITE);
+    auto *cvs = (Win32ConVarStruct *) this->os_cv;
+    auto *ms = (Win32MutexStruct *) associate.os_mutex;
+    BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, INFINITE);
     associate.unlock();
     if (!success) {
         char message[64];
         ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", (int) GetLastError());
         VeilForceExitOnError(message);
     }
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   endif
+}
+
+void ConditionVariable::notify() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-condition-variables
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-wakeconditionvariable
+    auto *cvs = (Win32ConVarStruct *) this->os_cv;
+    WakeConditionVariable(&cvs->embedded);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   endif
+}
+
+void ConditionVariable::notify_all() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-condition-variables
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-wakeallconditionvariable
+    auto *cvs = (Win32ConVarStruct *) this->os_cv;
+    WakeAllConditionVariable(&cvs->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 #   endif
 }

@@ -72,6 +72,8 @@ namespace veil::os {
 
         void notify();
 
+        void notify_all();
+
     private:
         Mutex associate;
         void *os_cv;
