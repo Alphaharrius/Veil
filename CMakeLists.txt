@@ -20,7 +20,7 @@ add_executable(
 
 add_executable(
         memory_memory_test
-        fabric/src/memory/memory_test.cpp
+        fabric/src/memory/tests/memory_test.cpp
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
@@ -35,7 +35,7 @@ add_executable(
 
 add_executable(
         threading_queue_test
-        fabric/src/threading/queue_test.cpp
+        fabric/src/threading/tests/queue_test.cpp
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
@@ -50,7 +50,7 @@ add_executable(
 
 add_executable(
         vm_thread_test
-        fabric/src/threading/vm_thread_test.cpp
+        fabric/src/threading/tests/vm_thread_test.cpp
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
@@ -65,7 +65,7 @@ add_executable(
 
 add_executable(
         thread_primitive_test
-        fabric/src/threading/primitive_test.cpp
+        fabric/src/threading/tests/primitive_test.cpp
         fabric/src/typedefs.hpp
         fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
         fabric/src/memory/management.hpp fabric/src/memory/management.cpp
