@@ -42,8 +42,8 @@ void Thread::sleep(uint32 milliseconds) {
     // https://man7.org/linux/man-pages/man3/usleep.3.html
     // This method sleep a period with precision of microseconds, according to the documentation this method will fail
     // if the host os doesn't support a sleep period of more than 1000000ms.
-    if (::usleep(milliseconds) != 0 && errno == EINVAL) {
-        uint32 microseconds = milliseconds * 1000;
+    uint32 microseconds = milliseconds * 1000;
+    if (::usleep(microseconds) != 0 && errno == EINVAL) {
         uint32 loop_count = microseconds / 1000000;
         while (loop_count--) {
             ::usleep(1000000);
@@ -51,15 +51,6 @@ void Thread::sleep(uint32 milliseconds) {
         ::usleep(microseconds % 1000000);
     }
 #endif
-}
-
-OSThread::OSThread() : os_thread(nullptr), status(Status::Idle) {}
-
-OSThread::~OSThread() {
-#   if defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    // Free the memory allocated for the pthread_t as a thread index.
-    os::free((pthread_t *) this->os_thread);
-#   endif
 }
 
 // Functions to be used for Win32 & pthread calls respectively, Win32 strictly requires the macro of WINAPI which refers
@@ -77,6 +68,13 @@ DWORD WINAPI win32_thread_function(void *params) {
 
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 
+/// Since pthread_t is a structure contains necessary attributes for instantiation, but pthread_create will not allocate
+/// the necessary memory for this structure, thus we have to wrap this object (follow strictly to the VM coding rules)
+/// inorder to allocate the memory before the init procedure.
+struct PThreadStruct : veil::memory::HeapObject {
+    pthread_t embedded;
+};
+
 void *pthread_thread_function(void *params) {
     auto *callable = (veil::vm::Callable *) params;
     callable->run();
@@ -85,7 +83,16 @@ void *pthread_thread_function(void *params) {
 
 #endif
 
-void OSThread::start(vm::Callable &callable, uint32 &error) {
+Thread::Thread() : os_thread(nullptr), status(Status::Idle) {}
+
+Thread::~Thread() {
+#   if defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Free the memory allocated for the pthread_t as a thread index.
+    delete ((PThreadStruct *) this->os_thread);
+#   endif
+}
+
+void Thread::start(vm::Callable &callable, uint32 &error) {
     if (this->status == Status::Started)
         VeilExitOnImplementationFault("Starting a started thread.");
     if (this->status == Status::Joined)
@@ -118,10 +125,10 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
     // https://man7.org/linux/man-pages/man3/pthread_create.3.html
 
     // Allocate the memory for a pthread_t which is an integer holding the thread index, else it will result in
-    // segmentation fault. This piece of memory will not be freed even after this OSThread is joined as it can be
+    // segmentation fault. This piece of memory will not be freed even after this Thread is joined as it can be
     // reused, this will be freed in the destructor.
     if (this->os_thread == nullptr)
-        this->os_thread = os::malloc(sizeof(pthread_t));
+        this->os_thread = new PThreadStruct();
     int os_status = pthread_create((pthread_t *) this->os_thread, nullptr, &pthread_thread_function, &callable);
     if (os_status) {
         switch (errno) {
@@ -136,7 +143,7 @@ void OSThread::start(vm::Callable &callable, uint32 &error) {
     this->status = Status::Started;
 }
 
-void OSThread::join(uint32 &error) {
+void Thread::join(uint32 &error) {
     if (this->status != Status::Started)
         VeilExitOnImplementationFault("Thread joined before started.");
 
@@ -177,28 +184,41 @@ void OSThread::join(uint32 &error) {
     this->status = Status::Idle;
 }
 
-OSThread::Status OSThread::get_status() {
+Thread::Status Thread::get_status() {
     return this->status;
 }
 
-OSMutex::OSMutex() : os_mutex(nullptr) {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+
+struct Win32MutexStruct : veil::memory::HeapObject {
+    CRITICAL_SECTION embedded;
+};
+
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+
+struct PThreadMutexStruct : veil::memory::HeapObject {
+    pthread_mutex_t embedded;
+};
+
+#endif
+
+Mutex::Mutex() : os_mutex(nullptr) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // In Win32, the representation of mutex is a critical section, the mutex defined in the Win32 API is a construct
+    // able to share between processes, which is overkill and less performant.
+
     // Implementation of the following have taken reference from:
-    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-createmutexa
-
-    // HANDLE is a typedef from (void *)
-    this->os_mutex = CreateMutexA(nullptr, false, nullptr);
-    if (this->os_mutex != nullptr)
-        return;
-
-    DWORD error = GetLastError();
-    switch (error) {
-    case ERROR_INVALID_HANDLE:
-    case ERROR_ALREADY_EXISTS:
-        VeilExitOnImplementationFault("These two error should not happen if the mutex is unnamed");
-    default:
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initializecriticalsectionandspincount
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
+    this->os_mutex = new Win32MutexStruct();
+    if (!InitializeCriticalSectionAndSpinCount((LPCRITICAL_SECTION) this->os_mutex,
+                                               threading::config::mutex_spin_count)) {
+        // According to source: Starting with Windows Vista, the InitializeCriticalSectionAndSpinCount function always
+        // succeeds, even in low memory situations.
         char message[64];
-        ::sprintf(message, "CreateMutexA failed on error code (%d).", (int) error);
+        ::sprintf(message,
+                  "InitializeCriticalSectionAndSpinCount failed on error code (%d).",
+                  (int) GetLastError());
         VeilForceExitOnError(message);
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -207,42 +227,36 @@ OSMutex::OSMutex() : os_mutex(nullptr) {
 
     // Allocate the memory for pthread_mutex_t structure before mutex initialization, or will result in segmentation
     // fault, this memory will be freed in destructor.
-    this->os_mutex = os::malloc(sizeof(pthread_mutex_t));
+    this->os_mutex = new PThreadMutexStruct();
     int status = pthread_mutex_init((pthread_mutex_t *) this->os_mutex, nullptr);
     if (!status) return;
 
     switch (errno) {
     case EAGAIN:
-    case ENOMEM: VeilForceExitOnError("Insufficient resources to create a mutex.");
-    case EPERM: VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
+    case ENOMEM:
+        VeilForceExitOnError("Insufficient resources to create a mutex.");
+    case EPERM:
+        VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
     case EBUSY:
     case EINVAL:
-    default: VeilExitOnImplementationFault("Should not reach here.");
+    default:
+        VeilExitOnImplementationFault("Should not reach here.");
     }
 #   endif
 }
 
-OSMutex::~OSMutex() {
+Mutex::~Mutex() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
-    // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
-    DWORD status = CloseHandle(this->os_mutex);
-    if (status) return;
-
-    DWORD error = GetLastError();
-    switch (error) {
-    // The mutex is always initialized as it is being done in the constructor.
-    case ERROR_INVALID_HANDLE: VeilForceExitOnError("Should not reach here.");
-    default:
-        char message[64];
-        ::sprintf(message, "CloseHandle failed on error code (%d).", (int) error);
-        VeilForceExitOnError(message);
-    }
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-deletecriticalsection
+    DeleteCriticalSection((LPCRITICAL_SECTION) this->os_mutex);
+    delete ((Win32MutexStruct *) this->os_mutex);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_destroy.html
     int status = pthread_mutex_destroy((pthread_mutex_t *) this->os_mutex);
-    os::free((pthread_mutex_t *) this->os_mutex);
+    delete ((PThreadMutexStruct *) this->os_mutex);
     if (!status) return;
 
     switch (errno) {
@@ -251,26 +265,18 @@ OSMutex::~OSMutex() {
         // abstraction level.
         VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
     case EINVAL: // The mutex is always initialized as it is being done in the constructor.
-    default: VeilForceExitOnError("Should not reach here.");
+    default:
+        VeilForceExitOnError("Should not reach here.");
     }
 #   endif
 }
 
-void OSMutex::lock() {
+void Mutex::lock() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    DWORD status = WaitForSingleObject(this->os_mutex, INFINITE);
-    switch (status) {
-    case WAIT_ABANDONED:
-    case WAIT_OBJECT_0: return;
-    case WAIT_TIMEOUT: VeilExitOnImplementationFault("Show not reach here as we wait indefinitely.");
-    case WAIT_FAILED:
-        // NOTE: It is worthy to investigate the set of error given here, but there lacks a function to convert DWORD to
-        // (char *) at this moment.
-        char message[64];
-        ::sprintf(message, "WaitForSingleObject failed on error code (%d).", (int) GetLastError());
-        VeilForceExitOnError(message);
-    default: VeilExitOnImplementationFault("Show not reach here.");
-    }
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-entercriticalsection
+    EnterCriticalSection((LPCRITICAL_SECTION) this->os_mutex);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_lock.html
@@ -278,24 +284,23 @@ void OSMutex::lock() {
     if (!status) return;
 
     switch (errno) {
-    case EDEADLK: VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
-    case EAGAIN: VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
+    case EDEADLK:
+        VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
+    case EAGAIN:
+        VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
     case EINVAL:
-    default: VeilExitOnImplementationFault("Should not reach here.");
+    default:
+        VeilExitOnImplementationFault("Should not reach here.");
     }
 #   endif
 }
 
-void OSMutex::unlock() {
+void Mutex::unlock() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
-    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-releasemutex
-    bool success = ReleaseMutex(this->os_mutex);
-    if (success) return;
-
-    char message[64];
-    ::sprintf(message, "ReleaseMutex failed on error code (%d).", (int) GetLastError());
-    VeilForceExitOnError(message);
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-leavecriticalsection
+    LeaveCriticalSection((LPCRITICAL_SECTION) this->os_mutex);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_unlock.html
@@ -303,8 +308,10 @@ void OSMutex::unlock() {
     if (!status) return;
 
     switch (errno) {
-    case EPERM: VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
-    case EAGAIN:VeilForceExitOnError(
+    case EPERM:
+        VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
+    case EAGAIN:
+        VeilForceExitOnError(
                 "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
                 "exceeded.");
     case EINVAL:
