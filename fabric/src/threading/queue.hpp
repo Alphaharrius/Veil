@@ -47,12 +47,6 @@ namespace veil::threading {
     /// \c Queuee is reached.
     class Queuee : memory::ArenaObject {
     public:
-        /// The number of spin locks on an occupied \c Queue before using the full queueing procedure which involves
-        /// thread blocking.
-        /// NOTE: It is questionable whether having a higher spin lock count can result in better performance as thread
-        /// blocking is still expensive.
-        static const uint32 MAX_SPIN_COUNT = 32;
-
         /// The idle value for \c Queuee::status flag.
         static const uint8 STAT_IDLE = 0;
         /// The value for \c Queuee::status flag refers to the queueing state before the target acquisition.

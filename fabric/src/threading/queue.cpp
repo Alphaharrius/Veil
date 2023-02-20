@@ -37,7 +37,7 @@ void Queuee::queue(Queue &queue) {
         // Spinning for MAX_SPIN_COUNT amount of time to see if the queue is available before using the full process of
         // queue acquisition. This will save some CPU resources in a contested situation.
         // TODO: The value of MAX_SPIN_COUNT must be profiled and updated to a more suitable value.
-        for (uint32 spin_count = 0; spin_count < MAX_SPIN_COUNT; spin_count++) {
+        for (uint32 spin_count = 0; spin_count < config::mutex_spin_count; spin_count++) {
             // Using atomic compare exchange to acquire the queue if it returns to empty state within the spin period.
             Queuee *null_queuee = nullptr;
             if (queue.last_queuee.compare_exchange_strong(null_queuee, this)) {

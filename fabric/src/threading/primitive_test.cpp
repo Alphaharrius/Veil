@@ -6,25 +6,25 @@ using namespace veil::threading;
 
 class Function : public veil::vm::Callable {
 public:
-    explicit Function(uint32 id, veil::os::OSMutex *mutex) : id(id), mutex(mutex) {}
+    explicit Function(uint32 id, veil::os::Mutex *mutex) : id(id), mutex(mutex) {}
 
     void run() override {
         for (int i = 0; i < 3; i++) {
             this->mutex->lock();
             std::cout << "Id: " << this->id << std::endl;
-            veil::os::OSThread::sleep(500);
+            veil::os::Thread::sleep(500);
             this->mutex->unlock();
-            veil::os::OSThread::sleep(2);
+            veil::os::Thread::sleep(2);
         }
     }
 
 private:
     uint32 id;
-    veil::os::OSMutex *mutex;
+    veil::os::Mutex *mutex;
 };
 
 int main() {
-    veil::os::OSMutex mutex;
+    veil::os::Mutex mutex;
     std::cout << "Begin test on thread primitives." << std::endl;
     {
         Function func_0(0, &mutex);
@@ -33,9 +33,9 @@ int main() {
 
         uint32 error;
 
-        veil::os::OSThread thread_0;
-        veil::os::OSThread thread_1;
-        veil::os::OSThread thread_2;
+        veil::os::Thread thread_0;
+        veil::os::Thread thread_1;
+        veil::os::Thread thread_2;
         thread_0.start(func_0, error);
         if (error != veil::ERR_NONE) {
             std::cerr << "Thread start failed: " << error << std::endl;

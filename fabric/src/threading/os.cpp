@@ -32,7 +32,7 @@
 
 using namespace veil::os;
 
-void OSThread::sleep(uint32 milliseconds) {
+void Thread::sleep(uint32 milliseconds) {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep

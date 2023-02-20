@@ -21,15 +21,15 @@
 
 namespace veil::os {
 
-    class OSThread : public memory::ValueObject {
+    class Thread : public memory::ValueObject {
     public:
         enum Status {Idle, Started, Joined};
 
         static void sleep(uint32 milliseconds);
 
-        OSThread();
+        Thread();
 
-        ~OSThread();
+        ~Thread();
 
         void start(vm::Callable &callable, uint32 &error);
 
@@ -42,11 +42,11 @@ namespace veil::os {
         Status status;
     };
 
-    class OSMutex : public memory::ValueObject {
+    class Mutex : public memory::ValueObject {
     public:
-        OSMutex();
+        Mutex();
 
-        ~OSMutex();
+        ~Mutex();
 
         void lock();
 
