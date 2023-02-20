@@ -127,10 +127,11 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
     // Allocate the memory for a pthread_t which is an integer holding the thread index, else it will result in
     // segmentation fault. This piece of memory will not be freed even after this Thread is joined as it can be
     // reused, this will be freed in the destructor.
-    if (this->os_thread == nullptr)
-        this->os_thread = new PThreadStruct();
-    int os_status = pthread_create((pthread_t *) this->os_thread, nullptr, &pthread_thread_function, &callable);
-    if (os_status) {
+    auto *pts = (PThreadStruct *) this->os_thread;
+    if (pts == nullptr)
+        pts = new PThreadStruct();
+
+    if (pthread_create(&pts->embedded, nullptr, &pthread_thread_function, &callable)) {
         switch (errno) {
         case EAGAIN: {
             error = threading::ERR_NO_RES;
@@ -139,6 +140,7 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
         default: VeilForceExitOnError("Invalid state of pthread error.");
         }
     }
+    this->os_thread = pts;
 #   endif
     this->status = Status::Started;
 }
@@ -165,12 +167,12 @@ void Thread::join(uint32 &error) {
 
     char message[64];
     ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
-    VeilForceExitOnError("CloseHandle failed on error code ().");
+    VeilForceExitOnError(message);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://man7.org/linux/man-pages/man3/pthread_join.3.html
-    int os_status = pthread_join((pthread_t) *((pthread_t *) this->os_thread), nullptr);
-    if (os_status) {
+    auto *pts = (PThreadStruct *) this->os_thread;
+    if (pthread_join(pts->embedded, nullptr)) {
         switch (errno) {
         case 0: return;
         case EDEADLK:error = threading::ERR_DEADLOCK;
@@ -210,9 +212,8 @@ Mutex::Mutex() : os_mutex(nullptr) {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initializecriticalsectionandspincount
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
-    this->os_mutex = new Win32MutexStruct();
-    if (!InitializeCriticalSectionAndSpinCount((LPCRITICAL_SECTION) this->os_mutex,
-                                               threading::config::mutex_spin_count)) {
+    auto *m = new Win32MutexStruct();
+    if (!InitializeCriticalSectionAndSpinCount(&m->embedded, threading::config::mutex_spin_count)) {
         // According to source: Starting with Windows Vista, the InitializeCriticalSectionAndSpinCount function always
         // succeeds, even in low memory situations.
         char message[64];
@@ -221,27 +222,28 @@ Mutex::Mutex() : os_mutex(nullptr) {
                   (int) GetLastError());
         VeilForceExitOnError(message);
     }
+    this->os_mutex = m;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_init.html
 
     // Allocate the memory for pthread_mutex_t structure before mutex initialization, or will result in segmentation
     // fault, this memory will be freed in destructor.
-    this->os_mutex = new PThreadMutexStruct();
-    int status = pthread_mutex_init((pthread_mutex_t *) this->os_mutex, nullptr);
-    if (!status) return;
-
-    switch (errno) {
-    case EAGAIN:
-    case ENOMEM:
-        VeilForceExitOnError("Insufficient resources to create a mutex.");
-    case EPERM:
-        VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
-    case EBUSY:
-    case EINVAL:
-    default:
-        VeilExitOnImplementationFault("Should not reach here.");
+    auto *pms = new PThreadMutexStruct();
+    if (pthread_mutex_init(&pms->embedded, nullptr)) {
+        switch (errno) {
+        case EAGAIN:
+        case ENOMEM:
+            VeilForceExitOnError("Insufficient resources to create a mutex.");
+        case EPERM:
+            VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
+        case EBUSY:
+        case EINVAL:
+        default:
+            VeilExitOnImplementationFault("Should not reach here.");
+        }
     }
+    this->os_mutex = pms;
 #   endif
 }
 
@@ -250,24 +252,25 @@ Mutex::~Mutex() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-deletecriticalsection
-    DeleteCriticalSection((LPCRITICAL_SECTION) this->os_mutex);
+    auto *ms = (Win32MutexStruct *) this->os_mutex;
+    DeleteCriticalSection(&ms->embedded);
     delete ((Win32MutexStruct *) this->os_mutex);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_destroy.html
-    int status = pthread_mutex_destroy((pthread_mutex_t *) this->os_mutex);
-    delete ((PThreadMutexStruct *) this->os_mutex);
-    if (!status) return;
-
-    switch (errno) {
-    case EBUSY:
-        // This case will be raised as critical error as all mutex usage should be properly handled in the higher
-        // abstraction level.
-        VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
-    case EINVAL: // The mutex is always initialized as it is being done in the constructor.
-    default:
-        VeilForceExitOnError("Should not reach here.");
+    auto *pms = (PThreadMutexStruct *) this->os_mutex;
+    if (pthread_mutex_destroy(&pms->embedded)) {
+        switch (errno) {
+        case EBUSY:
+            // This case will be raised as critical error as all mutex usage should be properly handled in the higher
+            // abstraction level.
+            VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
+        case EINVAL: // The mutex is always initialized as it is being done in the constructor.
+        default:
+            VeilForceExitOnError("Should not reach here.");
+        }
     }
+    delete pms;
 #   endif
 }
 
@@ -276,21 +279,22 @@ void Mutex::lock() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-entercriticalsection
-    EnterCriticalSection((LPCRITICAL_SECTION) this->os_mutex);
+    auto *ms = (Win32MutexStruct *) this->os_mutex;
+    EnterCriticalSection(&ms->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_lock.html
-    int status = pthread_mutex_lock((pthread_mutex_t *) this->os_mutex);
-    if (!status) return;
-
-    switch (errno) {
-    case EDEADLK:
-        VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
-    case EAGAIN:
-        VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
-    case EINVAL:
-    default:
-        VeilExitOnImplementationFault("Should not reach here.");
+    auto *pms = (PThreadMutexStruct *) this->os_mutex;
+    if (pthread_mutex_lock(&pms->embedded)) {
+        switch (errno) {
+        case EDEADLK:
+            VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
+        case EAGAIN:
+            VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
+        case EINVAL:
+        default:
+            VeilExitOnImplementationFault("Should not reach here.");
+        }
     }
 #   endif
 }
@@ -300,22 +304,75 @@ void Mutex::unlock() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-leavecriticalsection
-    LeaveCriticalSection((LPCRITICAL_SECTION) this->os_mutex);
+    auto *ms = (Win32MutexStruct *) this->os_mutex;
+    LeaveCriticalSection(&ms->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_unlock.html
-    int status = pthread_mutex_unlock((pthread_mutex_t *) this->os_mutex);
-    if (!status) return;
-
-    switch (errno) {
-    case EPERM:
-        VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
-    case EAGAIN:
-        VeilForceExitOnError(
-                "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
-                "exceeded.");
-    case EINVAL:
-    default: VeilExitOnImplementationFault("Should not reach here.");
+    auto *pms = (PThreadMutexStruct *) this->os_mutex;
+    if (pthread_mutex_unlock(&pms->embedded)) {
+        switch (errno) {
+        case EPERM:
+            VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
+        case EAGAIN:
+            VeilForceExitOnError(
+                    "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
+                    "exceeded.");
+        case EINVAL:
+        default:
+            VeilExitOnImplementationFault("Should not reach here.");
+        }
     }
+#   endif
+}
+
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+
+struct Win32ConVarStruct : veil::memory::HeapObject {
+    /// \c CONDITION_VARIABLE is a structure with a single attribute of type ( \c void \c* ).
+    CONDITION_VARIABLE embedded;
+};
+
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+
+#endif
+
+ConditionVariable::ConditionVariable() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-condition-variables
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initializeconditionvariable
+    this->os_cv = new Win32ConVarStruct();
+    InitializeConditionVariable((PCONDITION_VARIABLE) this->os_cv);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   endif
+}
+
+ConditionVariable::~ConditionVariable() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Win32 condition variable does not need to be destroyed, thus we free the memory directly.
+    delete ((Win32ConVarStruct *) this->os_cv);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   endif
+}
+
+void ConditionVariable::wait() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/sync/using-condition-variables
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleepconditionvariablecs
+
+    // To ensure the condition variable to be checked atomically, we have to lock the associated mutex.
+    associate.lock();
+    PCONDITION_VARIABLE cv = &((Win32ConVarStruct *) this->os_cv)->embedded;
+    PCRITICAL_SECTION cs = &((Win32MutexStruct *) associate.os_mutex)->embedded;
+    BOOL success = SleepConditionVariableCS(cv, cs, INFINITE);
+    associate.unlock();
+    if (!success) {
+        char message[64];
+        ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", (int) GetLastError());
+        VeilForceExitOnError(message);
+    }
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 #   endif
 }

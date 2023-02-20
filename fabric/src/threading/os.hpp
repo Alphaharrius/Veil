@@ -23,7 +23,9 @@ namespace veil::os {
 
     class Thread : public memory::ValueObject {
     public:
-        enum Status {Idle, Started, Joined};
+        enum Status {
+            Idle, Started, Joined
+        };
 
         static void sleep(uint32 milliseconds);
 
@@ -56,6 +58,23 @@ namespace veil::os {
 
     private:
         void *os_mutex;
+
+        friend class ConditionVariable;
+    };
+
+    class ConditionVariable : public memory::ValueObject {
+    public:
+        ConditionVariable();
+
+        ~ConditionVariable();
+
+        void wait();
+
+        void notify();
+
+    private:
+        Mutex associate;
+        void *os_cv;
     };
 
 }
