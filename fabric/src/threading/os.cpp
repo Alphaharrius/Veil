@@ -28,6 +28,7 @@
 #include "src/vm/structures.hpp"
 #include "src/vm/os.hpp"
 #include "src/memory/os.hpp"
+#include "src/threading/config.hpp"
 
 using namespace veil::os;
 
