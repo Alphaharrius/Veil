@@ -173,9 +173,11 @@ void Thread::join(uint32 &error) {
     if (pthread_join(pts->embedded, nullptr)) {
         switch (errno) {
         case 0: return;
-        case EDEADLK:error = threading::ERR_DEADLOCK;
+        case EDEADLK:
+            error = threading::ERR_DEADLOCK;
             return;
-        case EINVAL:error = threading::ERR_INV_JOIN;
+        case EINVAL:
+            error = threading::ERR_INV_JOIN;
             return;
         default: VeilForceExitOnError("Invalid state of pthread error.");
         }
