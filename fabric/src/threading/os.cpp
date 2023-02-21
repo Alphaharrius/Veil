@@ -104,14 +104,14 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
-    LPDWORD _ = nullptr;
+    DWORD _ = 0;
     // HANDLE is a typedef from (void *).
     this->os_thread = CreateThread(nullptr, // Using default security attributes.
                                    0, // Using default stack size which is 1MB (Shall this be a parameter?).
                                    win32_thread_function,
                                    &callable,
                                    0, // Start the thread immediately.
-                                   _); // We don't need the thread id.
+                                   &_); // We don't need the thread id.
     if (!this->os_thread) {
         switch (GetLastError()) {
         case ERROR_NOT_ENOUGH_MEMORY: {
