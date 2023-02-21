@@ -123,6 +123,8 @@ namespace veil::memory {
 
         T *inflate();
 
+        void destruct_objects();
+
         void free();
 
     private:
@@ -141,7 +143,7 @@ namespace veil::memory {
     T *TArena<T>::inflate() { return embedded.inflate(sizeof(T)); }
 
     template<typename T>
-    void TArena<T>::free() {
+    void TArena<T>::destruct_objects() {
         // The objects contained within the arena might have references to the heap, iteratively call the destructor of
         // all objects to ensure the resources is properly released.
         // NOTE: This procedure cannot ensure the resources will be free, some references might not be freed properly in
@@ -152,6 +154,10 @@ namespace veil::memory {
             current->~T();
             current = iterator.next();
         }
+    }
+
+    template<typename T>
+    void TArena<T>::free() {
         this->embedded.free();
     }
 
