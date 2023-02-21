@@ -20,7 +20,6 @@
 
 #include "src/typedefs.hpp"
 #include "src/vm/structures.hpp"
-#include "src/vm/resource.hpp"
 #include "src/core/runtime.forward.hpp"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
