@@ -13,8 +13,6 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-#include <string>
-
 #include "src/memory/os.hpp"
 #include "src/vm/os.hpp"
 #include "src/vm/errors.hpp"
