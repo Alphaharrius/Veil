@@ -18,9 +18,9 @@
 
 using namespace veil::threading;
 
-VMThread::VMThread(std::string &name, Runtime &runtime) : vm::Constituent<Runtime>(runtime),
-                                                          vm::HasName(name),
-                                                          interrupted(false) {}
+VMThread::VMThread(const char *name, Runtime &runtime) : vm::Constituent<Runtime>(runtime),
+                                                         vm::HasName(name),
+                                                         interrupted(false) {}
 
 void VMThread::start(vm::Request &request) {
     // Register a VM thread when it starts, so the threading management can manage its life cycle.
