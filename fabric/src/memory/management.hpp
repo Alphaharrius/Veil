@@ -16,7 +16,6 @@
 #ifndef VEIL_FABRIC_SRC_MEMORY_MANAGEMENT_HPP
 #define VEIL_FABRIC_SRC_MEMORY_MANAGEMENT_HPP
 
-#include <string>
 #include <atomic>
 
 #include "src/typedefs.hpp"
@@ -130,12 +129,9 @@ namespace veil::memory {
     ///     <li> The maximum memory size associated with a \c Pointer must not exceed 4GiB, allocation larger than this
     ///          should be handled beyond the management algorithm. </li>
     /// </ul>
-    class Algorithm : public vm::RequestExecutor, public memory::ValueObject {
+    class Algorithm : public vm::RequestExecutor, public memory::ValueObject, public vm::HasName {
     public:
-        /// \brief Provides the name of the algorithm.
-        /// \attention This name will be logged by the runtime logger if necessary.
-        /// \return The name of the algorithm.
-        virtual std::string name() = 0;
+        explicit Algorithm(const char *name);
 
         /// \brief Initialize the memory management algorithm.
         /// \attention Algorithm specific parameters can be passed with the attribute \c

@@ -19,6 +19,8 @@
 
 using namespace veil::memory;
 
+Algorithm::Algorithm(const char *name) : vm::HasName(name) {}
+
 Allocator::Allocator(Management &management) : vm::Constituent<Management>(management) {}
 
 Allocator *Management::create_allocator(vm::Request &request) {
