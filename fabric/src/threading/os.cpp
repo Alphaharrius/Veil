@@ -24,6 +24,8 @@
 
 #endif
 
+#include <cstdio>
+
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
 #include "src/vm/os.hpp"
