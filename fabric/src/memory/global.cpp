@@ -20,7 +20,7 @@
 
 using namespace veil::memory;
 
-void *HeapObject::operator new(uint64 size) {
+void *HeapObject::operator new(size_t size) {
     return os::malloc(size);
 }
 
