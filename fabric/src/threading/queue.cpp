@@ -119,8 +119,10 @@ bool Queuee::exit(Queue &queue) {
 QueueClient::QueueClient() : nested_level(0) {}
 
 QueueClient::~QueueClient() {
+    // Destruct individual Queuee.
+    this->destruct_objects();
     // Release all memory allocated by the cache.
-    this->TArena<Queuee>::free();
+    this->free();
 }
 
 void QueueClient::wait(Queue &target) {
