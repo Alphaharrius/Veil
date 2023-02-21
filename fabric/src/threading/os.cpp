@@ -137,7 +137,8 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
             error = threading::ERR_NO_RES;
             return;
         }
-        default: VeilForceExitOnError("Invalid state of pthread error.");
+        default:
+            VeilForceExitOnError("Invalid state of pthread error.");
         }
     }
     this->os_thread = pts;
@@ -172,14 +173,16 @@ void Thread::join(uint32 &error) {
     auto *pts = (PThreadStruct *) this->os_thread;
     if (pthread_join(pts->embedded, nullptr)) {
         switch (errno) {
-        case 0: return;
+        case 0:
+            return;
         case EDEADLK:
             error = threading::ERR_DEADLOCK;
             return;
         case EINVAL:
             error = threading::ERR_INV_JOIN;
             return;
-        default: VeilForceExitOnError("Invalid state of pthread error.");
+        default:
+            VeilForceExitOnError("Invalid state of pthread error.");
         }
     }
 #   endif
@@ -335,6 +338,10 @@ struct Win32ConVarStruct : veil::memory::HeapObject {
 
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 
+struct PThreadConVarStruct : veil::memory::HeapObject {
+    pthread_cond_t embedded;
+};
+
 #endif
 
 ConditionVariable::ConditionVariable() {
@@ -342,9 +349,27 @@ ConditionVariable::ConditionVariable() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-condition-variables
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-initializeconditionvariable
-    this->os_cv = new Win32ConVarStruct();
-    InitializeConditionVariable((PCONDITION_VARIABLE) this->os_cv);
+    auto *cvs = new Win32ConVarStruct();
+    InitializeConditionVariable(&cvs->embedded);
+    this->os_cv = cvs;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_init.html
+    auto *cvs = new PThreadConVarStruct();
+    // Returns 0 if successful.
+    if (!pthread_cond_init(&cvs->embedded, nullptr)) {
+        int os_error = errno;
+        switch (os_error) {
+        case EAGAIN:
+        case ENOMEM:
+            VeilForceExitOnError("Insufficient resources to create a condition variable.");
+        case EINVAL: // This case will never happen as passing nullptr as the pthread_attr means using default value.
+        case EBUSY: // The pthread_cond_t in embedded structure is newly allocated, it cannot be a used copy.
+        default: // No other error code will be possible in the current implementation of pthread.
+            VeilExitOnImplementationFault("Should not reach here.");
+        }
+    }
+    this->os_cv = cvs;
 #   endif
 }
 
@@ -353,6 +378,23 @@ ConditionVariable::~ConditionVariable() {
     // Win32 condition variable does not need to be destroyed, thus we free the memory directly.
     delete ((Win32ConVarStruct *) this->os_cv);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_destroy.html
+    auto *cvs = (PThreadConVarStruct *) this->os_cv;
+    if (!pthread_cond_destroy(&cvs->embedded)) {
+        int os_error = errno;
+        switch (os_error) {
+        case EBUSY:
+            VeilForceExitOnError("Attempt to destroy a condition variable with waiters.");
+        case EINVAL:
+            // The only error code EINVAL happens only if the condition variable is not initialized, which will not
+            // happen if it is properly instantiated. If this happens please check the implementations of the
+            // constructor of ConditionVariable.
+        default: // No other error code is available.
+            VeilExitOnImplementationFault("Should not reach here.");
+        }
+    }
+    delete cvs;
 #   endif
 }
 
@@ -374,6 +416,24 @@ void ConditionVariable::wait() {
         VeilForceExitOnError(message);
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_wait.html
+    auto *cvs = (PThreadConVarStruct *) this->os_cv;
+    auto *ms = (PThreadMutexStruct *) &this->associate;
+    if (!pthread_cond_wait(&cvs->embedded, &ms->embedded)) {
+        // The only error code EINVAL happens only if:
+        // -
+        // The condition variable & mutex as the parameter is not initialized, which will not happen if both are
+        // properly instantiated. If this happens please check the implementations of the constructors of Mutex &
+        // ConditionVariable.
+        // -
+        // Different mutexes were supplied for concurrent pthread_cond_wait() or pthread_cond_timedwait() operations on
+        // the same condition variable, which will not happen as the mutex we use is embedded within this instance.
+        // -
+        // The mutex was not owned by the current thread at the time of the call, which will not happen as the mutex we
+        // use is embedded within this instance.
+        VeilExitOnImplementationFault("Should not reach here.");
+    }
 #   endif
 }
 
@@ -385,6 +445,15 @@ void ConditionVariable::notify() {
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     WakeConditionVariable(&cvs->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_signal.html
+    auto *cvs = (PThreadConVarStruct *) this->os_cv;
+    if (!pthread_cond_signal(&cvs->embedded)) {
+        // The only error code EINVAL happens only if the condition variable is not initialized, which will not happen
+        // if it is properly instantiated. If this happens please check the implementations of the constructor of
+        // ConditionVariable.
+        VeilExitOnImplementationFault("Should not reach here.");
+    }
 #   endif
 }
 
@@ -396,5 +465,14 @@ void ConditionVariable::notify_all() {
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     WakeAllConditionVariable(&cvs->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_broadcast.html
+    auto *cvs = (PThreadConVarStruct *) this->os_cv;
+    if (!pthread_cond_broadcast(&cvs->embedded)) {
+        // The only error code EINVAL happens only if the condition variable is not initialized, which will not happen
+        // if it is properly instantiated. If this happens please check the implementations of the constructor of
+        // ConditionVariable.
+        VeilExitOnImplementationFault("Should not reach here.");
+    }
 #   endif
 }
