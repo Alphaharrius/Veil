@@ -421,9 +421,14 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
     BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, milliseconds);
     this->associate.unlock();
     if (!success) {
-        char message[64];
-        ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", (int) GetLastError());
-        VeilForceExitOnError(message);
+        uint32 err = GetLastError();
+        if (err == ERROR_TIMEOUT) {
+            timed_out = true;
+        } else {
+            char message[64];
+            ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", err);
+            VeilForceExitOnError(message);
+        }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     struct timeval now = {};
@@ -466,7 +471,7 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
     }
     this->associate.unlock();
 #   endif
-
+    return !timed_out;
 }
 
 void ConditionVariable::wait() {
