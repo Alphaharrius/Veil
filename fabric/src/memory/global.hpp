@@ -16,6 +16,8 @@
 #ifndef VEIL_FABRIC_SRC_MEMORY_GLOBAL_HPP
 #define VEIL_FABRIC_SRC_MEMORY_GLOBAL_HPP
 
+#include <cstddef>
+
 #include "src/typedefs.hpp"
 
 namespace veil::memory {
@@ -28,11 +30,11 @@ namespace veil::memory {
     /// allocation.
     class HeapObject {
     public:
-        void *operator new(std::size_t size);
+        void *operator new(size_t size);
 
         void operator delete(void *address);
 
-        void *operator new[](std::size_t size) = delete;
+        void *operator new[](size_t size) = delete;
 
         void operator delete[](void *address) = delete;
     };
@@ -41,11 +43,11 @@ namespace veil::memory {
     /// this class, this class forbids descendants to be allocated to the process heap.
     class ValueObject {
     public:
-        void *operator new(std::size_t size) = delete;
+        void *operator new(size_t size) = delete;
 
         void operator delete(void *address) = delete;
 
-        void *operator new[](std::size_t size) = delete;
+        void *operator new[](size_t size) = delete;
 
         void operator delete[](void *address) = delete;
     };
