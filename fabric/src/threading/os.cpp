@@ -22,6 +22,7 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <cerrno>
+#include <sys/time.h>
 
 #endif
 
@@ -406,7 +407,8 @@ ConditionVariable::~ConditionVariable() {
 #   endif
 }
 
-void ConditionVariable::wait() {
+bool ConditionVariable::wait_for(int32 milliseconds) {
+    bool timed_out = false;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-condition-variables
@@ -416,13 +418,61 @@ void ConditionVariable::wait() {
     associate.lock();
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     auto *ms = (Win32MutexStruct *) associate.os_mutex;
-    BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, INFINITE);
+    BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, milliseconds);
     associate.unlock();
     if (!success) {
         char message[64];
         ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", (int) GetLastError());
         VeilForceExitOnError(message);
     }
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    struct timeval now = {};
+    gettimeofday(&now,nullptr);
+
+    int64 abs_nsecs = now.tv_usec * 1000LL + milliseconds * 1000000LL;
+
+    struct timespec ts = {};
+    ts.tv_sec = now.tv_sec + abs_nsecs / 1000000000LL;
+    ts.tv_nsec = abs_nsecs % 1000000000LL;
+
+    // Lock the associated mutex for thread safety.
+    this->associate.lock();
+    // Implementation of the following have taken reference from:
+    // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_wait.html
+    auto *cvs = (PThreadConVarStruct *) this->os_cv;
+    auto *pms = (PThreadMutexStruct *) this->associate.os_mutex;
+    // Returns 0 if successful.
+    int err = pthread_cond_timedwait(&cvs->embedded, &pms->embedded, &ts);
+    switch (err) {
+    case 0:
+        break;
+    case ETIMEDOUT:
+        timed_out = true;
+        break;
+    case EINVAL:
+    default:
+        // The only error code EINVAL happens only if:
+        // -
+        // The condition variable & mutex as the parameter is not initialized, which will not happen if both are
+        // properly instantiated. If this happens please check the implementations of the constructors of Mutex &
+        // ConditionVariable.
+        // -
+        // Different mutexes were supplied for concurrent pthread_cond_wait() or pthread_cond_timedwait() operations on
+        // the same condition variable, which will not happen as the mutex we use is embedded within this instance.
+        // -
+        // The mutex was not owned by the current thread at the time of the call, which will not happen as the mutex we
+        // use is embedded within this instance.
+        VeilExitOnImplementationFault("Should not reach here.");
+    }
+    this->associate.unlock();
+#   endif
+
+}
+
+void ConditionVariable::wait() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // wait_for will never return false as the time to wait is set to INFINITE.
+    this->wait_for(INFINITE);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Lock the associated mutex for thread safety.
     this->associate.lock();

@@ -68,6 +68,8 @@ namespace veil::os {
 
         void wait();
 
+        bool wait_for(int32 milliseconds);
+
         void notify();
 
         void notify_all();
