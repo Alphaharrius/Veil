@@ -413,11 +413,11 @@ void ConditionVariable::wait() {
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleepconditionvariablecs
 
     // To ensure the condition variable to be checked atomically, we have to lock the associated mutex.
-    associate.lock();
+    this->associate.lock();
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     auto *ms = (Win32MutexStruct *) associate.os_mutex;
     BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, INFINITE);
-    associate.unlock();
+    this->associate.unlock();
     if (!success) {
         char message[64];
         ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", (int) GetLastError());
