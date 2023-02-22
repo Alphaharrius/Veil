@@ -236,18 +236,19 @@ Mutex::Mutex() : os_mutex(nullptr) {
     // Allocate the memory for pthread_mutex_t structure before mutex initialization, or will result in segmentation
     // fault, this memory will be freed in destructor.
     auto *pms = new PThreadMutexStruct();
-    if (pthread_mutex_init(&pms->embedded, nullptr)) {
-        switch (errno) {
-        case EAGAIN:
-        case ENOMEM:
-            VeilForceExitOnError("Insufficient resources to create a mutex.");
-        case EPERM:
-            VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
-        case EBUSY:
-        case EINVAL:
-        default:
-            VeilExitOnImplementationFault("Should not reach here.");
-        }
+    int err = pthread_mutex_init(&pms->embedded, nullptr);
+    switch (err) {
+    case 0:
+        break;
+    case EAGAIN:
+    case ENOMEM:
+        VeilForceExitOnError("Insufficient resources to create a mutex.");
+    case EPERM:
+        VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
+    case EBUSY:
+    case EINVAL:
+    default:
+        VeilExitOnImplementationFault("Should not reach here.");
     }
     this->os_mutex = pms;
 #   endif
@@ -265,16 +266,17 @@ Mutex::~Mutex() {
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_destroy.html
     auto *pms = (PThreadMutexStruct *) this->os_mutex;
-    if (pthread_mutex_destroy(&pms->embedded)) {
-        switch (errno) {
-        case EBUSY:
-            // This case will be raised as critical error as all mutex usage should be properly handled in the higher
-            // abstraction level.
-            VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
-        case EINVAL: // The mutex is always initialized as it is being done in the constructor.
-        default:
-            VeilForceExitOnError("Should not reach here.");
-        }
+    int err = pthread_mutex_destroy(&pms->embedded);
+    switch (err) {
+    case 0:
+        break;
+    case EBUSY:
+        // This case will be raised as critical error as all mutex usage should be properly handled in the higher
+        // abstraction level.
+        VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
+    case EINVAL: // The mutex is always initialized as it is being done in the constructor.
+    default:
+        VeilForceExitOnError("Should not reach here.");
     }
     delete pms;
 #   endif
@@ -291,16 +293,17 @@ void Mutex::lock() {
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_lock.html
     auto *pms = (PThreadMutexStruct *) this->os_mutex;
-    if (pthread_mutex_lock(&pms->embedded)) {
-        switch (errno) {
-        case EDEADLK:
-            VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
-        case EAGAIN:
-            VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
-        case EINVAL:
-        default:
-            VeilExitOnImplementationFault("Should not reach here.");
-        }
+    int err = pthread_mutex_lock(&pms->embedded);
+    switch (err) {
+    case 0:
+        break;
+    case EDEADLK:
+        VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
+    case EAGAIN:
+        VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
+    case EINVAL:
+    default:
+        VeilExitOnImplementationFault("Should not reach here.");
     }
 #   endif
 }
@@ -316,18 +319,19 @@ void Mutex::unlock() {
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_unlock.html
     auto *pms = (PThreadMutexStruct *) this->os_mutex;
-    if (pthread_mutex_unlock(&pms->embedded)) {
-        switch (errno) {
-        case EPERM:
-            VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
-        case EAGAIN:
-            VeilForceExitOnError(
-                    "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
-                    "exceeded.");
-        case EINVAL:
-        default:
-            VeilExitOnImplementationFault("Should not reach here.");
-        }
+    int err = pthread_mutex_unlock(&pms->embedded);
+    switch (err) {
+    case 0:
+        break;
+    case EPERM:
+        VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
+    case EAGAIN:
+        VeilForceExitOnError(
+                "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
+                "exceeded.");
+    case EINVAL:
+    default:
+        VeilExitOnImplementationFault("Should not reach here.");
     }
 #   endif
 }
@@ -360,17 +364,17 @@ ConditionVariable::ConditionVariable() {
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_init.html
     auto *cvs = new PThreadConVarStruct();
     // Returns 0 if successful.
-    if (!pthread_cond_init(&cvs->embedded, nullptr)) {
-        int os_error = errno;
-        switch (os_error) {
-        case EAGAIN:
-        case ENOMEM:
-            VeilForceExitOnError("Insufficient resources to create a condition variable.");
-        case EINVAL: // This case will never happen as passing nullptr as the pthread_attr means using default value.
-        case EBUSY: // The pthread_cond_t in embedded structure is newly allocated, it cannot be a used copy.
-        default: // No other error code will be possible in the current implementation of pthread.
-            VeilExitOnImplementationFault("Should not reach here.");
-        }
+    int err = pthread_cond_init(&cvs->embedded, nullptr);
+    switch (err) {
+    case 0:
+        break;
+    case EAGAIN:
+    case ENOMEM:
+        VeilForceExitOnError("Insufficient resources to create a condition variable.");
+    case EINVAL: // This case will never happen as passing nullptr as the pthread_attr means using default value.
+    case EBUSY: // The pthread_cond_t in embedded structure is newly allocated, it cannot be a used copy.
+    default: // No other error code will be possible in the current implementation of pthread.
+        VeilExitOnImplementationFault("Should not reach here.");
     }
     this->os_cv = cvs;
 #   endif
@@ -384,7 +388,8 @@ ConditionVariable::~ConditionVariable() {
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_destroy.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
-    if (!pthread_cond_destroy(&cvs->embedded)) {
+    // Returns 0 if successful.
+    if (pthread_cond_destroy(&cvs->embedded)) {
         int os_error = errno;
         switch (os_error) {
         case EBUSY:
@@ -419,11 +424,15 @@ void ConditionVariable::wait() {
         VeilForceExitOnError(message);
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Lock the associated mutex for thread safety.
+    this->associate.lock();
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_wait.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
-    auto *ms = (PThreadMutexStruct *) &this->associate;
-    if (!pthread_cond_wait(&cvs->embedded, &ms->embedded)) {
+    auto *pms = (PThreadMutexStruct *) this->associate.os_mutex;
+    // Returns 0 if successful.
+    int err = pthread_cond_wait(&cvs->embedded, &pms->embedded);
+    if (err) {
         // The only error code EINVAL happens only if:
         // -
         // The condition variable & mutex as the parameter is not initialized, which will not happen if both are
@@ -437,6 +446,7 @@ void ConditionVariable::wait() {
         // use is embedded within this instance.
         VeilExitOnImplementationFault("Should not reach here.");
     }
+    this->associate.unlock();
 #   endif
 }
 
@@ -448,15 +458,20 @@ void ConditionVariable::notify() {
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     WakeConditionVariable(&cvs->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Lock the associated mutex for thread safety.
+    this->associate.lock();
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_signal.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
-    if (!pthread_cond_signal(&cvs->embedded)) {
+    // Returns 0 if successful.
+    int err = pthread_cond_signal(&cvs->embedded);
+    if (err) {
         // The only error code EINVAL happens only if the condition variable is not initialized, which will not happen
         // if it is properly instantiated. If this happens please check the implementations of the constructor of
         // ConditionVariable.
         VeilExitOnImplementationFault("Should not reach here.");
     }
+    this->associate.unlock();
 #   endif
 }
 
@@ -468,14 +483,18 @@ void ConditionVariable::notify_all() {
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     WakeAllConditionVariable(&cvs->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Lock the associated mutex for thread safety.
+    this->associate.lock();
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_broadcast.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
-    if (!pthread_cond_broadcast(&cvs->embedded)) {
+    // Returns 0 if successful.
+    if (pthread_cond_broadcast(&cvs->embedded)) {
         // The only error code EINVAL happens only if the condition variable is not initialized, which will not happen
         // if it is properly instantiated. If this happens please check the implementations of the constructor of
         // ConditionVariable.
         VeilExitOnImplementationFault("Should not reach here.");
     }
+    this->associate.unlock();
 #   endif
 }
