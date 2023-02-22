@@ -28,8 +28,11 @@ public:
     explicit WaitFunction(uint32 id, veil::os::ConditionVariable *cv): id(id), cv(cv) {}
 
     void run() override {
-        cv->wait();
-        std::cout << "This function have been notified: " << id << std::endl;
+        bool notified = cv->wait_for(3000);
+        if (notified)
+            std::cout << "This function have been notified: " << id << std::endl;
+        else
+            std::cout << "This function is awaken: " << id << std::endl;
     }
 
 private:
@@ -42,7 +45,7 @@ public:
     explicit NotifyFunction(veil::os::ConditionVariable *cv): cv(cv) {}
 
     void run() override {
-        veil::os::Thread::sleep(5000);
+        veil::os::Thread::sleep(1000);
         cv->notify_all();
     }
 
