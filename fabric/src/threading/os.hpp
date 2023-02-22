@@ -79,6 +79,71 @@ namespace veil::os {
         void *os_cv;
     };
 
+    struct atomic_u64 {
+    public:
+        explicit atomic_u64(uint64 initial);
+
+        [[nodiscard]] uint64 load() const;
+
+        void store(uint64 value) const;
+
+        [[nodiscard]] uint64 exchange(uint64 value) const;
+
+        [[nodiscard]] uint64 compare_exchange(uint64 compare, uint64 value) const;
+
+        [[nodiscard]] uint64 fetch_add(uint64 value) const;
+
+        [[nodiscard]] uint64 fetch_sub(uint64 value) const;
+
+        [[nodiscard]] uint64 fetch_or(uint64 value) const;
+
+        [[nodiscard]] uint64 fetch_xor(uint64 value) const;
+
+    private:
+        volatile uint64 embedded;
+    };
+
+    template<typename T>
+    struct atomic_ptr {
+    public:
+        explicit atomic_ptr(T *initial);
+
+        [[nodiscard]] T *load() const;
+
+        void store(T *value) const;
+
+        [[nodiscard]] T *exchange(T *value) const;
+
+        [[nodiscard]] T *compare_exchange(T *compare, T *value) const;
+
+    private:
+        atomic_u64 embedded;
+    };
+
+    template<typename T>
+    atomic_ptr<T>::atomic_ptr(T *initial) : embedded(reinterpret_cast<uint64>(initial)) {}
+
+    template<typename T>
+    T *atomic_ptr<T>::load() const {
+        return reinterpret_cast<T *>(embedded.load());
+    }
+
+    template<typename T>
+    void atomic_ptr<T>::store(T *value) const {
+        embedded.store(reinterpret_cast<uint64>(value));
+    }
+
+    template<typename T>
+    T *atomic_ptr<T>::exchange(T *value) const {
+        return reinterpret_cast<T *>(embedded.exchange(reinterpret_cast<uint64>(value)));
+    }
+
+    template<typename T>
+    T *atomic_ptr<T>::compare_exchange(T *compare, T *value) const {
+        return reinterpret_cast<T *>(
+                embedded.compare_exchange(reinterpret_cast<uint64>(compare), reinterpret_cast<uint64>(value)));
+    }
+
 }
 
 #endif //VEIL_FABRIC_SRC_THREADING_OS_HPP
