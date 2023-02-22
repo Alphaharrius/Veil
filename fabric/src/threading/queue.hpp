@@ -16,8 +16,6 @@
 #ifndef VEIL_FABRIC_SRC_THREADING_QUEUE_HPP
 #define VEIL_FABRIC_SRC_THREADING_QUEUE_HPP
 
-#include <atomic>
-
 #include "src/typedefs.hpp"
 #include "src/memory/global.hpp"
 #include "src/threading/os.hpp"
@@ -36,7 +34,7 @@ namespace veil::threading {
     private:
         /// Atomic pointer caches the last \c Queuee waited in the queue, this attribute will be exchanged atomically to
         /// ensure only one \c Queuee can be queued after another \c Queuee.
-        std::atomic<Queuee *> last_queuee =  std::atomic<Queuee *>(nullptr);
+        os::atomic_ptr<Queuee> last_queuee =  os::atomic_ptr<Queuee>(nullptr);
 
         friend class Queuee;
     };

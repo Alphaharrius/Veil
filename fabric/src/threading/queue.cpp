@@ -41,8 +41,7 @@ void Queuee::queue(Queue &queue) {
         // TODO: The value of MAX_SPIN_COUNT must be profiled and updated to a more suitable value.
         for (uint32 spin_count = 0; spin_count < config::mutex_spin_count; spin_count++) {
             // Using atomic compare exchange to acquire the queue if it returns to empty state within the spin period.
-            Queuee *null_queuee = nullptr;
-            if (queue.last_queuee.compare_exchange_strong(null_queuee, this)) {
+            if (nullptr == queue.last_queuee.compare_exchange(nullptr, this)) {
                 // We can skip all subsequent procedure in acquiring the queue, this prevents all forms of thread
                 // blocking which would be resource intensive.
                 goto Acquire;
@@ -93,11 +92,10 @@ bool Queuee::exit(Queue &queue) {
         return true;
     }
 
-    Queuee *this_queuee = this;
     // Using atomic compare & exchange operation to reset the last queued monitor of the lockable target, if the last
     // queuee is this queuee, if the exchange is successful, the queue is reset and available for another fresh
     // acquisition; else, this implicitly shows that there are another queuee queued behind this queuee.
-    if (!queue.last_queuee.compare_exchange_strong(this_queuee, nullptr)) {
+    if (this != queue.last_queuee.compare_exchange(this, nullptr)) {
         // Set this queuee to exit state, when the queued queuee behind validated this state, it will be awakened from
         // its blocking state and acquire the queue.
         this->exit_queue = true;
