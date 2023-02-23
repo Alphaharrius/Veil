@@ -14,7 +14,7 @@
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 #include "src/memory/os.hpp"
-#include "src/vm/os.hpp"
+#include "src/vm/diagnostics.hpp"
 #include "src/vm/errors.hpp"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -45,7 +45,7 @@ void *veil::os::malloc(uint64 size) {
     // termination procedure is unlikely to be executed.
     // NOTE: This error will most likely not happening.
     if (!address)
-        VeilForceExitOnError("Host process is short in heap memory.");
+        veil::force_exit_on_error("Host process is short in heap memory.", VeilGetLineInfo);
     return static_cast<uint8 *>(address);
 }
 
