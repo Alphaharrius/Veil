@@ -30,7 +30,7 @@
 
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
-#include "src/vm/os.hpp"
+#include "src/vm/diagnostics.hpp"
 #include "src/memory/os.hpp"
 #include "src/threading/config.hpp"
 
@@ -59,14 +59,14 @@ void Thread::sleep(uint32 milliseconds) {
 
 // Functions to be used for Win32 & pthread calls respectively, Win32 strictly requires the macro of WINAPI which refers
 // to the __stdcall binary calling convention and a return value of DWORD; the requirement of pthread is simpler with a
-// return value of (void *). In both cases we will use vm::Callable as a delegate encapsulation of the custom logic we
+// return value of (void *). In both cases we will use vm::Executable as a delegate encapsulation of the custom logic we
 // would like to run in the thread.
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
 DWORD WINAPI win32_thread_function(void *params) {
-    auto *callable = (veil::vm::Callable *) params;
-    callable->run();
+    auto *executable = (veil::vm::Executable *) params;
+    executable->execute();
     return 0; // We will not use this return value.
 }
 
@@ -80,8 +80,8 @@ struct PThreadStruct : veil::memory::HeapObject {
 };
 
 void *pthread_thread_function(void *params) {
-    auto *callable = (veil::vm::Callable *) params;
-    callable->run();
+    auto *executable = (veil::vm::Executable *) params;
+    executable->execute();
     return nullptr; // We will not use this return value.
 }
 
@@ -96,11 +96,11 @@ Thread::~Thread() {
 #   endif
 }
 
-void Thread::start(vm::Callable &callable, uint32 &error) {
+void Thread::start(vm::Executable &callable, uint32 &error) {
     if (this->status == Status::Started)
-        VeilExitOnImplementationFault("Starting a started thread.");
+        veil::implementation_fault("Starting a started thread.", VeilGetLineInfo);
     if (this->status == Status::Joined)
-        VeilExitOnImplementationFault("Starting a joined thread.");
+        veil::implementation_fault("Starting a joined thread.", VeilGetLineInfo);
 
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -121,7 +121,7 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
             return;
         }
         default:
-            VeilForceExitOnError("Invalid state of Win32 error.");
+            veil::force_exit_on_error("Invalid state of Win32 error.", VeilGetLineInfo);
         }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -136,13 +136,14 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
         pts = new PThreadStruct();
 
     if (pthread_create(&pts->embedded, nullptr, &pthread_thread_function, &callable)) {
-        switch (errno) {
+        int err = errno;
+        switch (err) {
         case EAGAIN: {
             error = threading::ERR_NO_RES;
             return;
         }
         default:
-            VeilForceExitOnError("Invalid state of pthread error.");
+            veil::force_exit_on_error("Invalid state of pthread error :: " + std::to_string(err), VeilGetLineInfo);
         }
     }
     this->os_thread = pts;
@@ -152,7 +153,7 @@ void Thread::start(vm::Callable &callable, uint32 &error) {
 
 void Thread::join(uint32 &error) {
     if (this->status != Status::Started)
-        VeilExitOnImplementationFault("Thread joined before started.");
+        veil::implementation_fault("Thread joined before started.", VeilGetLineInfo);
 
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -167,16 +168,16 @@ void Thread::join(uint32 &error) {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
     if (!CloseHandle(this->os_thread)) {
-        char message[64];
-        ::sprintf(message, "CloseHandle failed on error code (%d).", (int) GetLastError());
-        VeilForceExitOnError(message);
+        veil::force_exit_on_error("CloseHandle failed on error code :: " + std::to_string(GetLastError()),
+                                  VeilGetLineInfo);
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://man7.org/linux/man-pages/man3/pthread_join.3.html
     auto *pts = (PThreadStruct *) this->os_thread;
     if (pthread_join(pts->embedded, nullptr)) {
-        switch (errno) {
+        int err = errno;
+        switch (err) {
         case 0:
             return;
         case EDEADLK:
@@ -186,7 +187,7 @@ void Thread::join(uint32 &error) {
             error = threading::ERR_INV_JOIN;
             return;
         default:
-            VeilForceExitOnError("Invalid state of pthread error.");
+            veil::force_exit_on_error("Invalid state of pthread error :: " + std::to_string(err), VeilGetLineInfo);
         }
     }
 #   endif
@@ -223,11 +224,9 @@ Mutex::Mutex() : os_mutex(nullptr) {
     if (!InitializeCriticalSectionAndSpinCount(&m->embedded, threading::config::mutex_spin_count)) {
         // According to source: Starting with Windows Vista, the InitializeCriticalSectionAndSpinCount function always
         // succeeds, even in low memory situations.
-        char message[64];
-        ::sprintf(message,
-                  "InitializeCriticalSectionAndSpinCount failed on error code (%d).",
-                  (int) GetLastError());
-        VeilForceExitOnError(message);
+        veil::force_exit_on_error(
+                "InitializeCriticalSectionAndSpinCount failed on error code :: " + std::to_string(GetLastError()),
+                VeilGetLineInfo);
     }
     this->os_mutex = m;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -243,13 +242,13 @@ Mutex::Mutex() : os_mutex(nullptr) {
         break;
     case EAGAIN:
     case ENOMEM:
-        VeilForceExitOnError("Insufficient resources to create a mutex.");
+        veil::force_exit_on_error("Insufficient resources to create a mutex.", VeilGetLineInfo);
     case EPERM:
-        VeilForceExitOnError("Owner of the VM process have no permission to create a mutex.");
+        veil::force_exit_on_error("No permission to create a mutex.", VeilGetLineInfo);
     case EBUSY:
     case EINVAL:
     default:
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->os_mutex = pms;
 #   endif
@@ -274,10 +273,10 @@ Mutex::~Mutex() {
     case EBUSY:
         // This case will be raised as critical error as all mutex usage should be properly handled in the higher
         // abstraction level.
-        VeilExitOnImplementationFault("Attempt to destroy a locked mutex.");
+        veil::implementation_fault("Attempt to destroy a locked mutex.", VeilGetLineInfo);
     case EINVAL: // The mutex is always initialized as it is being done in the constructor.
     default:
-        VeilForceExitOnError("Should not reach here.");
+        veil::force_exit_on_error("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     delete pms;
 #   endif
@@ -299,12 +298,13 @@ void Mutex::lock() {
     case 0:
         break;
     case EDEADLK:
-        VeilExitOnImplementationFault("Attempt to lock a owned mutex.");
+        veil::implementation_fault("Attempt to lock a owned mutex.", VeilGetLineInfo);
     case EAGAIN:
-        VeilForceExitOnError("The maximum number of recursive locks for mutex has been exceeded.");
+        veil::force_exit_on_error("The maximum number of recursive locks for mutex has been exceeded.",
+                                  VeilGetLineInfo);
     case EINVAL:
     default:
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
 #   endif
 }
@@ -325,14 +325,14 @@ void Mutex::unlock() {
     case 0:
         break;
     case EPERM:
-        VeilExitOnImplementationFault("Attempt to unlock a mutex without a prior lock on it.");
+        veil::implementation_fault("Attempt to unlock a mutex without a prior lock on it.", VeilGetLineInfo);
     case EAGAIN:
-        VeilForceExitOnError(
+        veil::force_exit_on_error(
                 "The mutex could not be unlocked because the maximum number of recursive locks for mutex has been "
-                "exceeded.");
+                "exceeded.", VeilGetLineInfo);
     case EINVAL:
     default:
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
 #   endif
 }
@@ -371,11 +371,11 @@ ConditionVariable::ConditionVariable() {
         break;
     case EAGAIN:
     case ENOMEM:
-        VeilForceExitOnError("Insufficient resources to create a condition variable.");
+        veil::force_exit_on_error("Insufficient resources to create a condition variable.", VeilGetLineInfo);
     case EINVAL: // This case will never happen as passing nullptr as the pthread_attr means using default value.
     case EBUSY: // The pthread_cond_t in embedded structure is newly allocated, it cannot be a used copy.
     default: // No other error code will be possible in the current implementation of pthread.
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->os_cv = cvs;
 #   endif
@@ -391,16 +391,16 @@ ConditionVariable::~ConditionVariable() {
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
     // Returns 0 if successful.
     if (pthread_cond_destroy(&cvs->embedded)) {
-        int os_error = errno;
-        switch (os_error) {
+        int err = errno;
+        switch (err) {
         case EBUSY:
-            VeilForceExitOnError("Attempt to destroy a condition variable with waiters.");
+            veil::force_exit_on_error("Attempt to destroy a busy condition variable", VeilGetLineInfo);
         case EINVAL:
             // The only error code EINVAL happens only if the condition variable is not initialized, which will not
             // happen if it is properly instantiated. If this happens please check the implementations of the
             // constructor of ConditionVariable.
         default: // No other error code is available.
-            VeilExitOnImplementationFault("Should not reach here.");
+            veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
         }
     }
     delete cvs;
@@ -425,14 +425,13 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
         if (err == ERROR_TIMEOUT) {
             timed_out = true;
         } else {
-            char message[64];
-            ::sprintf(message, "SleepConditionVariableCS failed on error code (%d).", err);
-            VeilForceExitOnError(message);
+            veil::force_exit_on_error("SleepConditionVariableCS failed on error code :: " + std::to_string(err),
+                                      VeilGetLineInfo);
         }
     }
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     struct timeval now = {};
-    gettimeofday(&now,nullptr);
+    gettimeofday(&now, nullptr);
 
     int64 abs_nsecs = now.tv_usec * 1000LL + milliseconds * 1000000LL;
 
@@ -467,7 +466,7 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
         // -
         // The mutex was not owned by the current thread at the time of the call, which will not happen as the mutex we
         // use is embedded within this instance.
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->associate.unlock();
 #   endif
@@ -499,7 +498,7 @@ void ConditionVariable::wait() {
         // -
         // The mutex was not owned by the current thread at the time of the call, which will not happen as the mutex we
         // use is embedded within this instance.
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->associate.unlock();
 #   endif
@@ -524,7 +523,7 @@ void ConditionVariable::notify() {
         // The only error code EINVAL happens only if the condition variable is not initialized, which will not happen
         // if it is properly instantiated. If this happens please check the implementations of the constructor of
         // ConditionVariable.
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->associate.unlock();
 #   endif
@@ -544,11 +543,12 @@ void ConditionVariable::notify_all() {
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_broadcast.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
     // Returns 0 if successful.
-    if (pthread_cond_broadcast(&cvs->embedded)) {
+    int err = pthread_cond_broadcast(&cvs->embedded);
+    if (err) {
         // The only error code EINVAL happens only if the condition variable is not initialized, which will not happen
         // if it is properly instantiated. If this happens please check the implementations of the constructor of
         // ConditionVariable.
-        VeilExitOnImplementationFault("Should not reach here.");
+        veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->associate.unlock();
 #   endif
