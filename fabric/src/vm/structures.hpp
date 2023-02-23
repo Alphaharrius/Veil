@@ -21,12 +21,9 @@
 #include "src/typedefs.hpp"
 #include "src/vm/errors.hpp"
 #include "src/memory/global.hpp"
-#include "src/vm/os.hpp"
+#include "src/vm/diagnostics.hpp"
 
 namespace veil::vm {
-
-    /// Place this macro with proper reason if a fault state happens due to VM implementation instead of runtime events.
-#   define VeilExitOnImplementationFault(reason) VeilForceExitOnError("ImplementationFault(" reason ")")
 
     class RequestExecutor;
 
@@ -71,19 +68,35 @@ namespace veil::vm {
     public:
         explicit Constituent(R &root);
 
+        Constituent();
+
+        void bind(R &root);
+
         R *get_root();
 
     protected:
         R *root;
     };
 
+    template<class R>
+    void Constituent<R>::bind(R &r) {
+        assert((this->root == nullptr &&
+                veil::implementation_fault("Root bounded.", VeilGetLineInfo)));
+        this->root = &r;
+    }
+
     template<class P>
     P *Constituent<P>::get_root() {
+        assert((this->root != nullptr &&
+                veil::implementation_fault("Root unbound.", VeilGetLineInfo)));
         return this->root;
     }
 
     template<class P>
     Constituent<P>::Constituent(P &root) : root(&root) {}
+
+    template<class R>
+    Constituent<R>::Constituent() : root(nullptr) {}
 
     template<class C>
     class Composite {
@@ -100,21 +113,21 @@ namespace veil::vm {
 
     template<class C>
     C *Composite<C>::get_composition() {
-        if (!this->composition)
-            VeilExitOnImplementationFault("Access composition before registering one.");
+        assert((this->composition == nullptr &&
+                veil::implementation_fault("Composition unbound.", VeilGetLineInfo)));
         return this->composition;
     }
 
     template<class C>
     void Composite<C>::bind(C &c) {
-        if (this->composition)
-            VeilExitOnImplementationFault("Registering a registered composition.");
+        assert((this->composition == nullptr &&
+                veil::implementation_fault("Composition bound.", VeilGetLineInfo)));
         this->composition = &c;
     }
 
-    class Callable {
+    class Executable {
     public:
-        virtual void run() = 0;
+        virtual void execute() = 0;
     };
 
 }
