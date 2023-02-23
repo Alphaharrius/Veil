@@ -66,9 +66,9 @@ namespace veil::vm {
     template<class R>
     class Constituent {
     public:
-        explicit Constituent(R &root);
+        explicit Constituent(R &root) : root(&root) {};
 
-        Constituent();
+        Constituent() : root(nullptr) {};
 
         void bind(R &root);
 
@@ -92,16 +92,12 @@ namespace veil::vm {
         return this->root;
     }
 
-    template<class P>
-    Constituent<P>::Constituent(P &root) : root(&root) {}
-
-    template<class R>
-    Constituent<R>::Constituent() : root(nullptr) {}
-
     template<class C>
     class Composite {
     public:
         Composite() : composition(nullptr) {}
+
+        explicit Composite(C &composition) : composition(composition) {}
 
         void bind(C &composition);
 
