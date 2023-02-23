@@ -40,7 +40,7 @@ uint64 atomic_u64::compare_exchange(uint64 compare, uint64 value) const {
 
 uint64 atomic_u64::fetch_add(uint64 value) const {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    return InterlockedAddAcquire64((volatile LONG64 *) &this->embedded, static_cast<int64>(value));
+    return InterlockedAdd64((volatile LONG64 *) &this->embedded, static_cast<int64>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 #   endif
 }
