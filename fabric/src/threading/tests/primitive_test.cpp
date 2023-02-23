@@ -4,11 +4,11 @@
 
 using namespace veil::threading;
 
-class LockFunction : public veil::vm::Callable {
+class LockFunction : public veil::vm::Executable {
 public:
     explicit LockFunction(uint32 id, veil::os::Mutex *mutex) : id(id), mutex(mutex) {}
 
-    void run() override {
+    void execute() override {
         for (int i = 0; i < 3; i++) {
             this->mutex->lock();
             std::cout << "Id: " << this->id << std::endl;
@@ -23,11 +23,11 @@ private:
     veil::os::Mutex *mutex;
 };
 
-class WaitFunction : public veil::vm::Callable {
+class WaitFunction : public veil::vm::Executable {
 public:
     explicit WaitFunction(uint32 id, veil::os::ConditionVariable *cv): id(id), cv(cv) {}
 
-    void run() override {
+    void execute() override {
         bool notified = cv->wait_for(3000);
         if (notified)
             std::cout << "This function have been notified: " << id << std::endl;
@@ -40,11 +40,11 @@ private:
     veil::os::ConditionVariable *cv;
 };
 
-class NotifyFunction : public veil::vm::Callable {
+class NotifyFunction : public veil::vm::Executable {
 public:
     explicit NotifyFunction(veil::os::ConditionVariable *cv): cv(cv) {}
 
-    void run() override {
+    void execute() override {
         veil::os::Thread::sleep(1000);
         cv->notify_all();
     }
