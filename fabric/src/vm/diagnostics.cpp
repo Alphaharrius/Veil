@@ -15,15 +15,24 @@
 
 #include <iostream>
 
-#include "os.hpp"
-#include "errors.hpp"
+#include "diagnostics.hpp"
 #include "src/veil.hpp"
 
-void veil::os::force_exit_on_error(
-        const char *reason, const char *filename, const char *function_name, uint32 line_number) {
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "performance-unnecessary-value-param"
+
+void veil::force_exit_on_error(std::string reason, LineInfo line_info) {
     std::cerr << "A critical error is detected by the runtime environment!" << std::endl
               << "Reason: " << reason << std::endl
-              << "At: " << function_name << " (" << filename << ": " << line_number << ")" << std::endl
+              << "At: method=" << line_info.function_name
+              << " (" << line_info.filename << ": " << line_info.line_number << ")" << std::endl
               << "Runtime: " << veil::VM_NAME << " version(" << veil::VM_VERSION << ")" << std::endl;
     ::exit(1);
 }
+
+bool veil::implementation_fault(std::string reason, veil::LineInfo line_info) {
+    veil::force_exit_on_error("Implementation fault :: " + reason, line_info);
+    return true;
+}
+
+#pragma clang diagnostic pop
