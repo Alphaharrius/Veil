@@ -33,7 +33,7 @@ namespace veil::os {
 
         ~Thread();
 
-        void start(vm::Callable &callable, uint32 &error);
+        void start(vm::Executable &callable, uint32 &error);
 
         void join(uint32 &error);
 
