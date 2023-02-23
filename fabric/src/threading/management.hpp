@@ -17,6 +17,7 @@
 #define VEIL_FABRIC_SRC_THREADING_MANAGEMENT_HPP
 
 #include <atomic>
+#include <string>
 
 #include "src/memory/global.hpp"
 #include "src/threading/os.hpp"
@@ -25,15 +26,24 @@
 
 namespace veil::threading {
 
-    class VMThread :
-            public memory::HeapObject, public vm::Constituent<Runtime>, public vm::RequestExecutor,
-            private veil::vm::Callable, public vm::HasName {
+    class Management;
+
+    class VMThread;
+
+    class VMService : public memory::HeapObject, public vm::HasName, public vm::Executable,
+                      public vm::Constituent<VMThread> {
     public:
-        explicit VMThread(const char *name, Runtime &runtime);
+        explicit VMService(std::string &name);
+    };
 
-        void start(vm::Request &request);
+    class VMThread : public memory::HeapObject, public vm::HasName,
+                     public vm::Constituent<Runtime>, public vm::Constituent<Management> {
+    public:
+        explicit VMThread(std::string &name, Management &management);
 
-        void join(vm::Request &request);
+        void start(VMService &service, uint32 &error);
+
+        void join(uint32 &error);
 
         void interrupt();
 
@@ -48,8 +58,6 @@ namespace veil::threading {
     class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread *> {
     private:
         void register_thread(VMThread &thread);
-
-        friend void VMThread::start(vm::Request &request);
     };
 
 }

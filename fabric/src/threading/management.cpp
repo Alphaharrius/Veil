@@ -18,22 +18,17 @@
 
 using namespace veil::threading;
 
-VMThread::VMThread(std::string &name, Runtime &runtime) : vm::Constituent<Runtime>(runtime),
-                                                         vm::HasName(name),
-                                                         interrupted(false) {}
+VMThread::VMThread(std::string &name, Management &management) : vm::Constituent<Runtime>(*management.get_root()),
+                                                                vm::Constituent<Management>(management),
+                                                                vm::HasName(name),
+                                                                interrupted(false) {}
 
-void VMThread::start(vm::Request &request) {
-    // Register a VM thread when it starts, so the threading management can manage its life cycle.
-    vm::Constituent<Runtime>::root->vm::Composite<threading::Management>::get_composition()->register_thread(*this);
-    uint32 error;
-    embedded.start(*this, error);
-    vm::RequestExecutor::set_error(request, error);
+void VMThread::start(VMService &service, uint32 &error) {
+    service.bind(*this);
+    embedded.start(service, error);
 }
 
-void VMThread::join(vm::Request &request) {
-    uint32 error;
-    embedded.join(error);
-    vm::RequestExecutor::set_error(request, error);
+void VMThread::join(uint32 &error) {
 }
 
 void VMThread::interrupt() {
@@ -49,3 +44,5 @@ void Management::register_thread(VMThread &thread) {
     VMThread **address = this->allocate();
     *address = &thread;
 }
+
+VMService::VMService(std::string &name) : HasName(name) {}
