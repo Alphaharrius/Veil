@@ -17,6 +17,6 @@
 
 using namespace veil::vm;
 
-HasName::HasName(const char *name) : name(name) {}
+HasName::HasName(std::string &name) : name(name) {}
 
-const char *HasName::get_name() { return name; }
+std::string HasName::get_name() { return name; }

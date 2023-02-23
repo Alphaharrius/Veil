@@ -18,7 +18,7 @@
 
 using namespace veil::threading;
 
-VMThread::VMThread(const char *name, Runtime &runtime) : vm::Constituent<Runtime>(runtime),
+VMThread::VMThread(std::string &name, Runtime &runtime) : vm::Constituent<Runtime>(runtime),
                                                          vm::HasName(name),
                                                          interrupted(false) {}
 

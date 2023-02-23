@@ -16,6 +16,8 @@
 #ifndef VEIL_FABRIC_SRC_STRUCTURES_HPP
 #define VEIL_FABRIC_SRC_STRUCTURES_HPP
 
+#include <string>
+
 #include "src/typedefs.hpp"
 #include "src/vm/errors.hpp"
 #include "src/memory/global.hpp"
@@ -56,12 +58,12 @@ namespace veil::vm {
 
     class HasName {
     public:
-        explicit HasName(const char *name);
+        explicit HasName(std::string &name);
 
-        const char *get_name();
+        std::string get_name();
 
     private:
-        const char *name;
+        std::string name;
     };
 
     template<class R>

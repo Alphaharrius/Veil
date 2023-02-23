@@ -17,6 +17,7 @@
 #define VEIL_FABRIC_SRC_MEMORY_MANAGEMENT_HPP
 
 #include <atomic>
+#include <string>
 
 #include "src/typedefs.hpp"
 #include "src/vm/structures.hpp"
@@ -130,7 +131,7 @@ namespace veil::memory {
     /// </ul>
     class Algorithm : public vm::RequestExecutor, public memory::ValueObject, public vm::HasName {
     public:
-        explicit Algorithm(const char *name);
+        explicit Algorithm(std::string &name);
 
         /// \brief Initialize the memory management algorithm.
         /// \attention Algorithm specific parameters can be passed with the attribute \c

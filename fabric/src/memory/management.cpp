@@ -13,13 +13,15 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include <string>
+
 #include "src/memory/management.hpp"
 #include "src/vm/errors.hpp"
 #include "src/memory/os.hpp"
 
 using namespace veil::memory;
 
-Algorithm::Algorithm(const char *name) : vm::HasName(name) {}
+Algorithm::Algorithm(std::string &name) : vm::HasName(name) {}
 
 Allocator::Allocator(Management &management) : vm::Constituent<Management>(management) {}
 
