@@ -2,87 +2,54 @@ cmake_minimum_required(VERSION 3.22)
 project(Veil)
 
 set(CMAKE_CXX_STANDARD 17)
-include_directories("fabric")
+include_directories(fabric)
+
+file(GLOB src
+        fabric/src/*.hpp
+        fabric/src/*.cpp)
+
+file(GLOB src_core
+        fabric/src/core/*.hpp
+        fabric/src/core/*.cpp)
+
+file(GLOB src_memory
+        fabric/src/memory/*.hpp
+        fabric/src/memory/*.cpp)
+
+file(GLOB src_threading
+        fabric/src/threading/*.hpp
+        fabric/src/threading/*.cpp)
+
+file(GLOB src_vm
+        fabric/src/vm/*.hpp
+        fabric/src/vm/*.cpp)
+
 add_executable(
-        Veil
+        ${PROJECT_NAME}
         main.cpp
-        fabric/src/typedefs.hpp
-        fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
-        fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
-        fabric/src/vm/errors.hpp
-        fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
-        fabric/src/memory/global.hpp fabric/src/memory/global.cpp
-        fabric/src/threading/os.cpp fabric/src/threading/os.hpp
-        fabric/src/threading/management.cpp fabric/src/threading/management.hpp
-        fabric/src/core/runtime.cpp fabric/src/core/runtime.hpp fabric/src/core/runtime.forward.hpp fabric/src/memory/os.cpp fabric/src/memory/os.hpp fabric/src/threading/config.hpp fabric/src/threading/atomic.cpp)
+        ${src} ${src_core} ${src_memory} ${src_threading} ${src_vm})
 
 add_executable(
         memory_memory_test
         fabric/src/memory/tests/memory_test.cpp
-        fabric/src/typedefs.hpp
-        fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
-        fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
-        fabric/src/vm/errors.hpp
-        fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
-        fabric/src/memory/global.hpp fabric/src/memory/global.cpp
-        fabric/src/threading/os.cpp fabric/src/threading/os.hpp
-        fabric/src/threading/management.cpp fabric/src/threading/management.hpp
-        fabric/src/core/runtime.cpp fabric/src/core/runtime.hpp fabric/src/core/runtime.forward.hpp fabric/src/memory/os.cpp fabric/src/memory/os.hpp fabric/src/threading/config.hpp fabric/src/threading/atomic.cpp)
+        ${src} ${src_core} ${src_memory} ${src_threading} ${src_vm})
 
 add_executable(
         threading_queue_test
         fabric/src/threading/tests/queue_test.cpp
-        fabric/src/typedefs.hpp
-        fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
-        fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
-        fabric/src/vm/errors.hpp
-        fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
-        fabric/src/memory/global.hpp fabric/src/memory/global.cpp
-        fabric/src/threading/os.cpp fabric/src/threading/os.hpp
-        fabric/src/threading/management.cpp fabric/src/threading/management.hpp
-        fabric/src/core/runtime.cpp fabric/src/core/runtime.hpp fabric/src/core/runtime.forward.hpp fabric/src/memory/os.cpp fabric/src/memory/os.hpp fabric/src/threading/config.hpp fabric/src/threading/atomic.cpp)
+        ${src} ${src_core} ${src_memory} ${src_threading} ${src_vm})
 
 add_executable(
         vm_thread_test
         fabric/src/threading/tests/vm_thread_test.cpp
-        fabric/src/typedefs.hpp
-        fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
-        fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
-        fabric/src/vm/errors.hpp
-        fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
-        fabric/src/memory/global.hpp fabric/src/memory/global.cpp
-        fabric/src/threading/os.cpp fabric/src/threading/os.hpp
-        fabric/src/threading/management.cpp fabric/src/threading/management.hpp
-        fabric/src/core/runtime.cpp fabric/src/core/runtime.hpp fabric/src/core/runtime.forward.hpp fabric/src/memory/os.cpp fabric/src/memory/os.hpp fabric/src/threading/config.hpp fabric/src/threading/atomic.cpp)
+        ${src} ${src_core} ${src_memory} ${src_threading} ${src_vm})
 
 add_executable(
         thread_primitive_test
         fabric/src/threading/tests/primitive_test.cpp
-        fabric/src/typedefs.hpp
-        fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
-        fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
-        fabric/src/vm/errors.hpp
-        fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
-        fabric/src/memory/global.hpp fabric/src/memory/global.cpp
-        fabric/src/threading/os.cpp fabric/src/threading/os.hpp
-        fabric/src/threading/management.cpp fabric/src/threading/management.hpp
-        fabric/src/core/runtime.cpp fabric/src/core/runtime.hpp fabric/src/core/runtime.forward.hpp fabric/src/memory/os.cpp fabric/src/memory/os.hpp fabric/src/threading/config.hpp fabric/src/threading/atomic.cpp)
+        ${src} ${src_core} ${src_memory} ${src_threading} ${src_vm})
 
 add_executable(
         atomic_test
         fabric/src/threading/tests/atomic_test.cpp
-        fabric/src/typedefs.hpp
-        fabric/src/vm/structures.hpp fabric/src/vm/structures.cpp
-        fabric/src/memory/management.hpp fabric/src/memory/management.cpp
-        fabric/src/vm/os.hpp fabric/src/vm/os.cpp
-        fabric/src/vm/errors.hpp
-        fabric/src/threading/queue.cpp fabric/src/threading/queue.hpp
-        fabric/src/memory/global.hpp fabric/src/memory/global.cpp
-        fabric/src/threading/os.cpp fabric/src/threading/os.hpp
-        fabric/src/threading/management.cpp fabric/src/threading/management.hpp
-        fabric/src/core/runtime.cpp fabric/src/core/runtime.hpp fabric/src/core/runtime.forward.hpp fabric/src/memory/os.cpp fabric/src/memory/os.hpp fabric/src/threading/config.hpp fabric/src/threading/atomic.cpp)
+        ${src} ${src_core} ${src_memory} ${src_threading} ${src_vm})
