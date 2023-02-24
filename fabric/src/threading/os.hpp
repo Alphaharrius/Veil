@@ -27,7 +27,7 @@ namespace veil::os {
             Idle, Started, Joined
         };
 
-        static void sleep(uint32 milliseconds);
+        static void static_sleep(uint32 milliseconds);
 
         Thread();
 
