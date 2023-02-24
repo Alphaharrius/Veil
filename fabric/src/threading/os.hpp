@@ -79,6 +79,30 @@ namespace veil::os {
         void *os_cv;
     };
 
+    struct atomic_u32 {
+    public:
+        explicit atomic_u32(uint32 initial);
+
+        [[nodiscard]] uint32 load() const;
+
+        void store(uint32 value) const;
+
+        [[nodiscard]] uint32 exchange(uint32 value) const;
+
+        [[nodiscard]] uint32 compare_exchange(uint32 compare, uint32 value) const;
+
+        [[nodiscard]] uint32 fetch_add(uint32 value) const;
+
+        [[nodiscard]] uint32 fetch_sub(uint32 value) const;
+
+        [[nodiscard]] uint32 fetch_or(uint32 value) const;
+
+        [[nodiscard]] uint32 fetch_xor(uint32 value) const;
+
+    private:
+        uint32 embedded;
+    };
+
     struct atomic_u64 {
     public:
         explicit atomic_u64(uint64 initial);
