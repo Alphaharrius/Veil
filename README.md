@@ -36,24 +36,20 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
         - [x] Interface of ```Algorithm```
     - [ ] Implement the standard management algorithm.
 
-2. [ ] Implement all encapsulations of OS specific threading primitives.
+2. [x] Implement all encapsulations of OS specific threading primitives.
     - [x] ```Thread```
     - [x] ```Mutex```
     - [x] ```ConditionVariable```
-    - [ ] Atomics
+    - [x] Atomics
 
-3. [ ] Implement VM specific threading primitives.
+3. [x] Implement VM specific threading primitives.
     - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
 
-4. [ ] Exchange all existing usage of ```<atomic>``` and ```<condition_variable>``` to the encapsulations.
-    - [ ] ```Queue```
+4. [x] Exchange all existing usage of ```<atomic>``` and ```<condition_variable>``` to the encapsulations.
+    - [x] ```Queue```
 
 5. [ ] Implement the thread management.
     - [ ] All management's functionality should be protected by a mutex.
-    - [x] Register all ```VMThread``` upon their start of execution.
-        - This is done by calling the method ```threading::Management::register``` at the start of ```VMThread::start```
-          .
-    - [ ] Wait for all registered threads to complete their execution from the first to the last.
     - [ ] Method to interrupt all thread at once.
 
 6. [ ] Implement the Veil execution environment.
