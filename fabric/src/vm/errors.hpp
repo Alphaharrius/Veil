@@ -51,6 +51,7 @@ namespace veil::threading {
     static const uint32 ERR_NO_RES = memory::ERR_NO_ALGO + 1;
     static const uint32 ERR_DEADLOCK = ERR_NO_RES + 1;
     static const uint32 ERR_INV_JOIN = ERR_DEADLOCK + 1;
+    static const uint32 ERR_INTERRUPT = ERR_INV_JOIN + 1;
 
 }
 
