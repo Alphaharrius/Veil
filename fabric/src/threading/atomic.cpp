@@ -190,3 +190,13 @@ uint64 atomic_u64::fetch_xor(uint64 value) const {
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
 #   endif
 }
+
+atomic_bool::atomic_bool(bool initial) : embedded(initial ? 1 : 0) {}
+
+bool atomic_bool::load() const {
+    return embedded.load() != 0;
+}
+
+void atomic_bool::store(bool value) const {
+    return embedded.store(value ? 1 : 0);
+}

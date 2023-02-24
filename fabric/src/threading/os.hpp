@@ -127,6 +127,18 @@ namespace veil::os {
         volatile uint64 embedded;
     };
 
+    struct atomic_bool {
+    public:
+        explicit atomic_bool(bool initial);
+
+        bool load() const;
+
+        void store(bool value) const;
+
+    private:
+        atomic_u32 embedded;
+    };
+
     template<typename T>
     struct atomic_ptr {
     public:
