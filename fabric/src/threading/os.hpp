@@ -131,7 +131,7 @@ namespace veil::os {
     public:
         explicit atomic_bool(bool initial);
 
-        bool load() const;
+        [[nodiscard]] bool load() const;
 
         void store(bool value) const;
 
