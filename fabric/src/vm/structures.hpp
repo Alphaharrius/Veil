@@ -80,8 +80,6 @@ namespace veil::vm {
 
     template<class R>
     void Constituent<R>::bind(R &r) {
-        assert((this->root == nullptr &&
-                veil::implementation_fault("Root bounded.", VeilGetLineInfo)));
         this->root = &r;
     }
 
@@ -116,8 +114,6 @@ namespace veil::vm {
 
     template<class C>
     void Composite<C>::bind(C &c) {
-        assert((this->composition == nullptr &&
-                veil::implementation_fault("Composition bound.", VeilGetLineInfo)));
         this->composition = &c;
     }
 
