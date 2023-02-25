@@ -91,15 +91,7 @@ namespace veil::os {
 
         ~Thread();
 
-        // TODO: Move sleep, block & wake to VMThread, don't blur the domain of responsibility.
-
         void start(vm::Executable &callable, uint32 &error);
-
-        void sleep(int32 milliseconds, uint32 &error);
-
-        void block(uint32 &error);
-
-        void wake();
 
         void join(uint32 &error);
 
