@@ -123,8 +123,6 @@ namespace veil::memory {
 
         T *allocate();
 
-        T *inflate();
-
         void destruct_objects();
 
         void free();
@@ -140,9 +138,6 @@ namespace veil::memory {
 
     template<typename T>
     T *TArena<T>::allocate() { return static_cast<T *>(embedded.allocate(sizeof(T))); }
-
-    template<typename T>
-    T *TArena<T>::inflate() { return embedded.inflate(sizeof(T)); }
 
     template<typename T>
     void TArena<T>::destruct_objects() {
