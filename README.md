@@ -38,6 +38,8 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
 
 2. [x] Implement all encapsulations of OS specific threading primitives.
     - [ ] ```Thread```
+      - [x] Implement the basic encapsulations.
+      - [x] Able to execute a ```VMService```.
       - [ ] Priority settings for all OS threads.
     - [x] ```Mutex```
     - [x] ```ConditionVariable```
