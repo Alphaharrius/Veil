@@ -18,6 +18,9 @@
 #include <windows.h>
 
 #elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+
+#include <sys/time.h>
+
 #endif
 
 #include "os.hpp"
@@ -33,5 +36,9 @@ uint64 veil::os::current_time_milliseconds() {
     uint64 unix_epoch_1_1_1601 = 11644473600000ULL;
     return millis_1_1_1601 - unix_epoch_1_1_1601;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    struct timeval now = {};
+    // This will always succeed.
+    gettimeofday(&now, nullptr);
+    return ((uint64) now.tv_sec) * 1000ULL + (uint64) (now.tv_usec / 1000);
 #   endif
 }
