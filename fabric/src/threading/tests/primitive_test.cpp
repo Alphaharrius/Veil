@@ -12,9 +12,9 @@ public:
         for (int i = 0; i < 3; i++) {
             this->mutex->lock();
             std::cout << "Id: " << this->id << std::endl;
-            veil::os::Thread::sleep(500);
+            veil::os::Thread::static_sleep(500);
             this->mutex->unlock();
-            veil::os::Thread::sleep(2);
+            veil::os::Thread::static_sleep(2);
         }
     }
 
@@ -45,7 +45,7 @@ public:
     explicit NotifyFunction(veil::os::ConditionVariable *cv): cv(cv) {}
 
     void execute() override {
-        veil::os::Thread::sleep(1000);
+        veil::os::Thread::static_sleep(1000);
         cv->notify_all();
     }
 
