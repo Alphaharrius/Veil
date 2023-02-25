@@ -122,6 +122,24 @@ namespace veil::vm {
         virtual void execute() = 0;
     };
 
+    template<typename T>
+    class Consumer {
+    public:
+        virtual void execute(T param) = 0;
+    };
+
+    template<typename A, typename B>
+    class BiConsumer {
+    public:
+        virtual void execute(A a, B b) = 0;
+    };
+
+    template<typename P, typename R>
+    class Function {
+    public:
+        virtual R execute(P param) = 0;
+    };
+
 }
 
 #endif //VEIL_FABRIC_SRC_STRUCTURES_HPP
