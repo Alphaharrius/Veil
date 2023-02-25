@@ -36,7 +36,7 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
         - [x] Interface of ```Algorithm```
     - [ ] Implement the standard management algorithm.
 
-2. [x] Implement all encapsulations of OS specific threading primitives.
+2. [ ] Implement all encapsulations of OS specific threading primitives.
     - [ ] ```Thread```
       - [x] Implement the basic encapsulations.
       - [x] Able to execute a ```VMService```.
@@ -44,6 +44,7 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [x] ```Mutex```
     - [x] ```ConditionVariable```
     - [x] Atomics
+    - [ ] Add handling for spurious wakeup of ```ConditionVariable```.
 
 3. [x] Implement VM specific threading primitives.
     - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
