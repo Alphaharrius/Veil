@@ -22,6 +22,11 @@
 
 namespace veil::os {
 
+    /// The wrapper of the native mutex construct.
+    /// <ul>
+    ///     <li> For Win32 we uses \c CRITICAL_SECTION as the backend. </li>
+    ///     <li> For Linux/UNIX we uses \c pthread_mutex_t as the backend. </li>
+    /// </ul>
     class Mutex : public memory::ValueObject {
     public:
         Mutex();
