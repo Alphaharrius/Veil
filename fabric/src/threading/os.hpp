@@ -26,15 +26,34 @@ namespace veil::os {
     public:
         Mutex();
 
+        /// Destroys the embedded native mutex construct.
         ~Mutex();
 
+        /// The calling thread will grant exclusive access to the mutex, all subsequent locker threads will enters block
+        /// state.
+        /// \attention For Win32 this operation is guaranteed to be successful; for \c pthread_mutex_t there will be
+        /// two cases which a failure will result in exiting the whole process:
+        /// <ul>
+        ///     <li> Re-locking the mutex. </li>
+        ///     <li> The maximum number of recursive locks for mutex has been exceeded. </li>
+        /// </ul>
         void lock();
 
+        /// The calling thread will give up the exclusive access to the mutex, all subsequent locker threads will exit
+        /// block state and competes for the access right.
+        /// \attention For Win32 this operation is guaranteed to be successful; for \c pthread_mutex_t there will be
+        /// two cases which a failure will result in exiting the whole process:
+        /// <ul>
+        ///     <li> Unlocking a mutex that the thread hasn't owned. </li>
+        ///     <li> The maximum number of recursive locks for mutex has been exceeded. </li>
+        /// </ul>
         void unlock();
 
     private:
-        void *os_mutex;
+        /// A pointer to a structure that holds the native mutex, the type varies by platform.
+        void *native_struct;
 
+        // Condition variable requires accessing the native mutex to function.
         friend class ConditionVariable;
     };
 
@@ -61,6 +80,8 @@ namespace veil::os {
     public:
         static void static_sleep(uint32 milliseconds);
 
+        static uint64 current_thread_id();
+
         Thread();
 
         ~Thread();
@@ -77,8 +98,10 @@ namespace veil::os {
 
         void join(uint32 &error);
 
+        uint64 id();
+
     private:
-        void *os_thread;
+        void *native_struct;
         bool started;
 
         ConditionVariable blocking_cv;
