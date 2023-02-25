@@ -57,6 +57,18 @@ void Thread::static_sleep(uint32 milliseconds) {
 #endif
 }
 
+uint64 Thread::current_thread_id() {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-sleep
+    return (uint64) GetCurrentThreadId();
+#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    // Implementation of the following have taken reference from:
+    // https://man7.org/linux/man-pages/man3/pthread_self.3.html
+    return (uint64) pthread_self();
+#endif
+}
+
 // Functions to be used for Win32 & pthread calls respectively, Win32 strictly requires the macro of WINAPI which refers
 // to the __stdcall binary calling convention and a return value of DWORD; the requirement of pthread is simpler with a
 // return value of (void *). In both cases we will use vm::Executable as a delegate encapsulation of the custom logic we
@@ -93,13 +105,13 @@ void *pthread_thread_function(void *params) {
 
 #endif
 
-Thread::Thread() : os_thread(nullptr), started(false) {}
+Thread::Thread() : native_struct(nullptr), started(false) {}
 
 Thread::~Thread() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    delete ((Win32ThreadStruct *) this->os_thread);
+    delete ((Win32ThreadStruct *) this->native_struct);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    delete ((PThreadStruct *) this->os_thread);
+    delete ((PThreadStruct *) this->native_struct);
 #   endif
 }
 
@@ -111,7 +123,7 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
-    auto *wts = (Win32ThreadStruct *) this->os_thread;
+    auto *wts = (Win32ThreadStruct *) this->native_struct;
     if (wts == nullptr)
         wts = new Win32ThreadStruct();
 
@@ -134,7 +146,7 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
     }
 
     wts->embedded = thread;
-    this->os_thread = wts;
+    this->native_struct = wts;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://man7.org/linux/man-pages/man3/pthread_create.3.html
@@ -142,7 +154,7 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
     // Allocate the memory for a pthread_t which is an integer holding the thread index, else it will result in
     // segmentation fault. This piece of memory will not be freed even after this Thread is joined as it can be
     // reused, this will be freed in the destructor.
-    auto *pts = (PThreadStruct *) this->os_thread;
+    auto *pts = (PThreadStruct *) this->native_struct;
     if (pts == nullptr)
         pts = new PThreadStruct();
 
@@ -154,59 +166,9 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
         } else
             veil::force_exit_on_error("Invalid state of pthread error :: " + std::to_string(err), VeilGetLineInfo);
     }
-    this->os_thread = pts;
+    this->native_struct = pts;
 #   endif
     this->started = true;
-}
-
-void Thread::sleep(int32 milliseconds, uint32 &error) {
-    error = veil::ERR_NONE;
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    DWORD current_thread_id = GetCurrentThreadId();
-    auto *wts = (Win32ThreadStruct *) this->os_thread;
-    // Check if the calling thread is itself.
-    if (current_thread_id != wts->id)
-        veil::implementation_fault("Sleeping/Blocking another thread is forbidden.", VeilGetLineInfo);
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    pthread_t current_thread = pthread_self();
-    auto *pts = (PThreadStruct *) this->os_thread;
-    if (current_thread != pts->embedded)
-        veil::implementation_fault("Sleeping another thread is forbidden.", VeilGetLineInfo);
-#   endif
-    if (blocking_cv.wait_for(milliseconds))
-        error = threading::ERR_INTERRUPT;
-}
-
-void Thread::block(uint32 &error) {
-    error = veil::ERR_NONE;
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    sleep(INFINITE, error);
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    pthread_t current_thread = pthread_self();
-    auto *pts = (PThreadStruct *) this->os_thread;
-    if (current_thread != pts->embedded)
-        veil::implementation_fault("Blocking another thread is forbidden.", VeilGetLineInfo);
-
-    // Wait indefinitely until notified.
-    blocking_cv.wait();
-#   endif
-}
-
-void Thread::wake() {
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    DWORD current_thread_id = GetCurrentThreadId();
-    auto *wts = (Win32ThreadStruct *) this->os_thread;
-    // Check if the calling thread is itself.
-    if (current_thread_id == wts->id)
-        veil::implementation_fault("A thread who wakes itself is trivial.", VeilGetLineInfo);
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    pthread_t current_thread = pthread_self();
-    auto *pts = (PThreadStruct *) this->os_thread;
-    if (current_thread == pts->embedded)
-        veil::implementation_fault("A thread who wakes itself is trivial.", VeilGetLineInfo);
-#   endif
-    // Only 'this' thread (Not the caller thread) can wait on this condition variable, thus notify one thread is ok.
-    blocking_cv.notify();
 }
 
 void Thread::join(uint32 &error) {
@@ -217,7 +179,7 @@ void Thread::join(uint32 &error) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject
-    auto *wts = (Win32ThreadStruct *) this->os_thread;
+    auto *wts = (Win32ThreadStruct *) this->native_struct;
     // NOTE: The error code of this method is not clear, thus we will use threading::ERR_INV_JOIN as a failed status.
     if (WaitForSingleObject(wts->embedded, INFINITE) == WAIT_FAILED) {
         error = threading::ERR_INV_JOIN;
@@ -232,7 +194,7 @@ void Thread::join(uint32 &error) {
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://man7.org/linux/man-pages/man3/pthread_join.3.html
-    auto *pts = (PThreadStruct *) this->os_thread;
+    auto *pts = (PThreadStruct *) this->native_struct;
     if (pthread_join(pts->embedded, nullptr)) {
         int err = errno;
         switch (err) {
@@ -252,6 +214,16 @@ void Thread::join(uint32 &error) {
     this->started = false;
 }
 
+uint64 Thread::id() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    auto *wts = (Win32ThreadStruct *) this->native_struct;
+    return static_cast<uint64>(wts->id);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    auto *pts = (PThreadStruct *) this->native_struct;
+    return (uint64) pts->embedded;
+#   endif
+}
+
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
 struct Win32MutexStruct : veil::memory::HeapObject {
@@ -266,7 +238,7 @@ struct PThreadMutexStruct : veil::memory::HeapObject {
 
 #endif
 
-Mutex::Mutex() : os_mutex(nullptr) {
+Mutex::Mutex() : native_struct(nullptr) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // In Win32, the representation of mutex is a critical section, the mutex defined in the Win32 API is a construct
     // able to share between processes, which is overkill and less performant.
@@ -282,7 +254,7 @@ Mutex::Mutex() : os_mutex(nullptr) {
                 "InitializeCriticalSectionAndSpinCount failed on error code :: " + std::to_string(GetLastError()),
                 VeilGetLineInfo);
     }
-    this->os_mutex = m;
+    this->native_struct = m;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_init.html
@@ -304,7 +276,7 @@ Mutex::Mutex() : os_mutex(nullptr) {
     default:
         veil::implementation_fault("Should not reach here :: " + std::to_string(err), VeilGetLineInfo);
     }
-    this->os_mutex = pms;
+    this->native_struct = pms;
 #   endif
 }
 
@@ -313,13 +285,13 @@ Mutex::~Mutex() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-deletecriticalsection
-    auto *ms = (Win32MutexStruct *) this->os_mutex;
+    auto *ms = (Win32MutexStruct *) this->native_struct;
     DeleteCriticalSection(&ms->embedded);
-    delete ((Win32MutexStruct *) this->os_mutex);
+    delete ((Win32MutexStruct *) this->native_struct);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/007904875/functions/pthread_mutex_destroy.html
-    auto *pms = (PThreadMutexStruct *) this->os_mutex;
+    auto *pms = (PThreadMutexStruct *) this->native_struct;
     int err = pthread_mutex_destroy(&pms->embedded);
     switch (err) {
     case 0:
@@ -341,12 +313,12 @@ void Mutex::lock() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-entercriticalsection
-    auto *ms = (Win32MutexStruct *) this->os_mutex;
+    auto *ms = (Win32MutexStruct *) this->native_struct;
     EnterCriticalSection(&ms->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_lock.html
-    auto *pms = (PThreadMutexStruct *) this->os_mutex;
+    auto *pms = (PThreadMutexStruct *) this->native_struct;
     int err = pthread_mutex_lock(&pms->embedded);
     switch (err) {
     case 0:
@@ -368,12 +340,12 @@ void Mutex::unlock() {
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/sync/using-critical-section-objects
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-leavecriticalsection
-    auto *ms = (Win32MutexStruct *) this->os_mutex;
+    auto *ms = (Win32MutexStruct *) this->native_struct;
     LeaveCriticalSection(&ms->embedded);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_mutex_unlock.html
-    auto *pms = (PThreadMutexStruct *) this->os_mutex;
+    auto *pms = (PThreadMutexStruct *) this->native_struct;
     int err = pthread_mutex_unlock(&pms->embedded);
     switch (err) {
     case 0:
@@ -471,7 +443,7 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
     // To ensure the condition variable to be checked atomically, we have to lock the associated mutex.
     this->associate.lock();
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
-    auto *ms = (Win32MutexStruct *) associate.os_mutex;
+    auto *ms = (Win32MutexStruct *) associate.native_struct;
     BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, (DWORD) milliseconds);
     this->associate.unlock();
     if (!success) {
@@ -498,7 +470,7 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_wait.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
-    auto *pms = (PThreadMutexStruct *) this->associate.os_mutex;
+    auto *pms = (PThreadMutexStruct *) this->associate.native_struct;
     // Returns 0 if successful.
     int err = pthread_cond_timedwait(&cvs->embedded, &pms->embedded, &ts);
     switch (err) {
@@ -537,7 +509,7 @@ void ConditionVariable::wait() {
     // Implementation of the following have taken reference from:
     // https://pubs.opengroup.org/onlinepubs/7908799/xsh/pthread_cond_wait.html
     auto *cvs = (PThreadConVarStruct *) this->os_cv;
-    auto *pms = (PThreadMutexStruct *) this->associate.os_mutex;
+    auto *pms = (PThreadMutexStruct *) this->associate.native_struct;
     // Returns 0 if successful.
     int err = pthread_cond_wait(&cvs->embedded, &pms->embedded);
     if (err) {
