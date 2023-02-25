@@ -44,7 +44,7 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [x] ```Mutex```
     - [x] ```ConditionVariable```
     - [x] Atomics
-    - [ ] Add handling for spurious wakeup of ```ConditionVariable```.
+    - [x] Add handling for spurious wakeup of ```ConditionVariable```.
 
 3. [x] Implement VM specific threading primitives.
     - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
