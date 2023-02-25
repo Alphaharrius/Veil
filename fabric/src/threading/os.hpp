@@ -18,31 +18,9 @@
 
 #include "src/memory/global.hpp"
 #include "src/vm/structures.hpp"
+#include "src/threading/atomic.hpp"
 
 namespace veil::os {
-
-    class Thread : public memory::ValueObject {
-    public:
-        enum Status {
-            Idle, Started, Joined
-        };
-
-        static void static_sleep(uint32 milliseconds);
-
-        Thread();
-
-        ~Thread();
-
-        void start(vm::Executable &callable, uint32 &error);
-
-        void join(uint32 &error);
-
-        Status get_status();
-
-    private:
-        void *os_thread;
-        Status status;
-    };
 
     class Mutex : public memory::ValueObject {
     public:
@@ -79,106 +57,30 @@ namespace veil::os {
         void *os_cv;
     };
 
-    struct atomic_u32 {
+    class Thread : public memory::ValueObject {
     public:
-        explicit atomic_u32(uint32 initial);
+        static void static_sleep(uint32 milliseconds);
 
-        [[nodiscard]] uint32 load() const;
+        Thread();
 
-        void store(uint32 value) const;
+        ~Thread();
 
-        [[nodiscard]] uint32 exchange(uint32 value) const;
+        void start(vm::Executable &callable, uint32 &error);
 
-        [[nodiscard]] uint32 compare_exchange(uint32 compare, uint32 value) const;
+        void sleep(int32 milliseconds, uint32 &error);
 
-        [[nodiscard]] uint32 fetch_add(uint32 value) const;
+        void block(uint32 &error);
 
-        [[nodiscard]] uint32 fetch_sub(uint32 value) const;
+        void wake();
 
-        [[nodiscard]] uint32 fetch_or(uint32 value) const;
-
-        [[nodiscard]] uint32 fetch_xor(uint32 value) const;
+        void join(uint32 &error);
 
     private:
-        uint32 embedded;
+        void *os_thread;
+        bool started;
+
+        ConditionVariable blocking_cv;
     };
-
-    struct atomic_u64 {
-    public:
-        explicit atomic_u64(uint64 initial);
-
-        [[nodiscard]] uint64 load() const;
-
-        void store(uint64 value) const;
-
-        [[nodiscard]] uint64 exchange(uint64 value) const;
-
-        [[nodiscard]] uint64 compare_exchange(uint64 compare, uint64 value) const;
-
-        [[nodiscard]] uint64 fetch_add(uint64 value) const;
-
-        [[nodiscard]] uint64 fetch_sub(uint64 value) const;
-
-        [[nodiscard]] uint64 fetch_or(uint64 value) const;
-
-        [[nodiscard]] uint64 fetch_xor(uint64 value) const;
-
-    private:
-        volatile uint64 embedded;
-    };
-
-    struct atomic_bool {
-    public:
-        explicit atomic_bool(bool initial);
-
-        [[nodiscard]] bool load() const;
-
-        void store(bool value) const;
-
-    private:
-        atomic_u32 embedded;
-    };
-
-    template<typename T>
-    struct atomic_ptr {
-    public:
-        explicit atomic_ptr(T *initial);
-
-        [[nodiscard]] T *load() const;
-
-        void store(T *value) const;
-
-        [[nodiscard]] T *exchange(T *value) const;
-
-        [[nodiscard]] T *compare_exchange(T *compare, T *value) const;
-
-    private:
-        atomic_u64 embedded;
-    };
-
-    template<typename T>
-    atomic_ptr<T>::atomic_ptr(T *initial) : embedded(reinterpret_cast<uint64>(initial)) {}
-
-    template<typename T>
-    T *atomic_ptr<T>::load() const {
-        return reinterpret_cast<T *>(embedded.load());
-    }
-
-    template<typename T>
-    void atomic_ptr<T>::store(T *value) const {
-        embedded.store(reinterpret_cast<uint64>(value));
-    }
-
-    template<typename T>
-    T *atomic_ptr<T>::exchange(T *value) const {
-        return reinterpret_cast<T *>(embedded.exchange(reinterpret_cast<uint64>(value)));
-    }
-
-    template<typename T>
-    T *atomic_ptr<T>::compare_exchange(T *compare, T *value) const {
-        return reinterpret_cast<T *>(
-                embedded.compare_exchange(reinterpret_cast<uint64>(compare), reinterpret_cast<uint64>(value)));
-    }
 
 }
 

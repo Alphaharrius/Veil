@@ -64,6 +64,12 @@ void Thread::static_sleep(uint32 milliseconds) {
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
+/// This is used to store both the thread handle and the thread id.
+struct Win32ThreadStruct {
+    HANDLE embedded;
+    DWORD id;
+};
+
 DWORD WINAPI win32_thread_function(void *params) {
     auto *executable = (veil::vm::Executable *) params;
     executable->execute();
@@ -87,34 +93,36 @@ void *pthread_thread_function(void *params) {
 
 #endif
 
-Thread::Thread() : os_thread(nullptr), status(Status::Idle) {}
+Thread::Thread() : os_thread(nullptr), started(false) {}
 
 Thread::~Thread() {
-#   if defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    // Free the memory allocated for the pthread_t as a thread index.
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    delete ((Win32ThreadStruct *) this->os_thread);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     delete ((PThreadStruct *) this->os_thread);
 #   endif
 }
 
 void Thread::start(vm::Executable &callable, uint32 &error) {
-    if (this->status == Status::Started)
+    if (this->started)
         veil::implementation_fault("Starting a started thread.", VeilGetLineInfo);
-    if (this->status == Status::Joined)
-        veil::implementation_fault("Starting a joined thread.", VeilGetLineInfo);
 
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
-    DWORD _ = 0;
+    auto *wts = (Win32ThreadStruct *) this->os_thread;
+    if (wts == nullptr)
+        wts = new Win32ThreadStruct();
+
     // HANDLE is a typedef from (void *).
-    this->os_thread = CreateThread(nullptr, // Using default security attributes.
-                                   0, // Using default stack size which is 1MB (Shall this be a parameter?).
-                                   win32_thread_function,
-                                   &callable,
-                                   0, // Start the thread immediately.
-                                   &_); // We don't need the thread id.
-    if (!this->os_thread) {
+    void *thread = CreateThread(nullptr, // Using default security attributes.
+                                0, // Using default stack size which is 1MB (Shall this be a parameter?).
+                                win32_thread_function,
+                                &callable,
+                                0, // Start the thread immediately.
+                                (LPDWORD) &wts->id);
+    if (thread == nullptr) {
         switch (GetLastError()) {
         case ERROR_NOT_ENOUGH_MEMORY: {
             error = threading::ERR_NO_RES;
@@ -124,6 +132,9 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
             veil::force_exit_on_error("Invalid state of Win32 error.", VeilGetLineInfo);
         }
     }
+
+    wts->embedded = thread;
+    this->os_thread = wts;
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://man7.org/linux/man-pages/man3/pthread_create.3.html
@@ -137,37 +148,84 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
 
     if (pthread_create(&pts->embedded, nullptr, &pthread_thread_function, &callable)) {
         int err = errno;
-        switch (err) {
-        case EAGAIN: {
+        if (err == EAGAIN) {
             error = threading::ERR_NO_RES;
             return;
-        }
-        default:
+        } else
             veil::force_exit_on_error("Invalid state of pthread error :: " + std::to_string(err), VeilGetLineInfo);
-        }
     }
     this->os_thread = pts;
 #   endif
-    this->status = Status::Started;
+    this->started = true;
+}
+
+void Thread::sleep(int32 milliseconds, uint32 &error) {
+    error = veil::ERR_NONE;
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    DWORD current_thread_id = GetCurrentThreadId();
+    auto *wts = (Win32ThreadStruct *) this->os_thread;
+    // Check if the calling thread is itself.
+    if (current_thread_id != wts->id)
+        veil::implementation_fault("Sleeping/Blocking another thread is forbidden.", VeilGetLineInfo);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    pthread_t current_thread = pthread_self();
+    auto *pts = (PThreadStruct *) this->os_thread;
+    if (current_thread != pts->embedded)
+        veil::implementation_fault("Sleeping another thread is forbidden.", VeilGetLineInfo);
+#   endif
+    if (blocking_cv.wait_for(milliseconds))
+        error = threading::ERR_INTERRUPT;
+}
+
+void Thread::block(uint32 &error) {
+    error = veil::ERR_NONE;
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    sleep(INFINITE, error);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    pthread_t current_thread = pthread_self();
+    auto *pts = (PThreadStruct *) this->os_thread;
+    if (current_thread != pts->embedded)
+        veil::implementation_fault("Blocking another thread is forbidden.", VeilGetLineInfo);
+
+    // Wait indefinitely until notified.
+    blocking_cv.wait();
+#   endif
+}
+
+void Thread::wake() {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    DWORD current_thread_id = GetCurrentThreadId();
+    auto *wts = (Win32ThreadStruct *) this->os_thread;
+    // Check if the calling thread is itself.
+    if (current_thread_id == wts->id)
+        veil::implementation_fault("A thread who wakes itself is trivial.", VeilGetLineInfo);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+    pthread_t current_thread = pthread_self();
+    auto *pts = (PThreadStruct *) this->os_thread;
+    if (current_thread == pts->embedded)
+        veil::implementation_fault("A thread who wakes itself is trivial.", VeilGetLineInfo);
+#   endif
+    // Only 'this' thread (Not the caller thread) can wait on this condition variable, thus notify one thread is ok.
+    blocking_cv.notify();
 }
 
 void Thread::join(uint32 &error) {
-    if (this->status != Status::Started)
+    if (!this->started)
         veil::implementation_fault("Thread joined before started.", VeilGetLineInfo);
 
     error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject
-    // NOTE: The error code of this method is not clear, thus we will use \c threading::ERR_INV_JOIN as a failed status.
-    if (WaitForSingleObject(this->os_thread, INFINITE) == WAIT_FAILED) {
+    auto *wts = (Win32ThreadStruct *) this->os_thread;
+    // NOTE: The error code of this method is not clear, thus we will use threading::ERR_INV_JOIN as a failed status.
+    if (WaitForSingleObject(wts->embedded, INFINITE) == WAIT_FAILED) {
         error = threading::ERR_INV_JOIN;
         return;
     }
-    this->status = Status::Joined;
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
-    if (!CloseHandle(this->os_thread)) {
+    if (!CloseHandle(wts->embedded)) {
         veil::force_exit_on_error("CloseHandle failed on error code :: " + std::to_string(GetLastError()),
                                   VeilGetLineInfo);
     }
@@ -191,11 +249,7 @@ void Thread::join(uint32 &error) {
         }
     }
 #   endif
-    this->status = Status::Idle;
-}
-
-Thread::Status Thread::get_status() {
-    return this->status;
+    this->started = false;
 }
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
@@ -418,7 +472,7 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
     this->associate.lock();
     auto *cvs = (Win32ConVarStruct *) this->os_cv;
     auto *ms = (Win32MutexStruct *) associate.os_mutex;
-    BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, milliseconds);
+    BOOL success = SleepConditionVariableCS(&cvs->embedded, &ms->embedded, (DWORD) milliseconds);
     this->associate.unlock();
     if (!success) {
         uint32 err = GetLastError();
