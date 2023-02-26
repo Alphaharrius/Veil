@@ -15,13 +15,17 @@
 
 #include "src/threading/management.hpp"
 #include "src/core/runtime.hpp"
+#include "src/vm/os.hpp"
 
 using namespace veil::threading;
 
-VMThread::VMThread(std::string &name, Management &management) : vm::Constituent<Runtime>(*management.get_root()),
-                                                                vm::Constituent<Management>(management),
-                                                                vm::HasName(name),
-                                                                interrupted(false) {}
+VMService::VMService(std::string &name) : HasName(name) {}
+
+void VMService::interrupt() {
+    this->vm::Constituent<VMThread>::get_root()->interrupt();
+}
+
+VMThread::BlockingAgent::BlockingAgent() : wake(false) {}
 
 void VMThread::start(VMService &service, uint32 &error) {
     service.bind(*this);
@@ -29,20 +33,74 @@ void VMThread::start(VMService &service, uint32 &error) {
 }
 
 void VMThread::join(uint32 &error) {
+    embedded.join(error);
 }
 
 void VMThread::interrupt() {
-    interrupted.store(true);
+    struct InterruptAccess : public vm::Function<bool &, bool> {
+        bool execute(bool &interrupt) override {
+            if (interrupt)
+                return false;
+            interrupt = true;
+        }
+    };
+    // If an interrupt order is placed, this thread will abandon all sleep or blocking.
+    // TODO: Wake the current thread.
+    // The thread who made this request will wait until this thread receives the order.
+    static auto consumer = InterruptAccess();
+//    interrupt_channel.apply(consumer);
 }
 
-bool VMThread::is_interrupted() {
-    return interrupted.load();
+VMThread::VMThread(Management &management) : vm::Constituent<Management>(management) {}
+
+void VMThread::sleep(uint32 milliseconds, uint32 &error) {
+    error = veil::ERR_NONE;
+
+    // Sleep can only be done by the thread itself.
+    assert((embedded.id() != os::Thread::current_thread_id() &&
+            veil::implementation_fault("Attempt to sleep another thread", VeilGetLineInfo)));
+
+    BlockingAgent &agent = this->blocking_agent;
+    agent.wake.store(false);
+
+    uint64 now = os::current_time_milliseconds();
+    uint64 time_left = milliseconds;
+    // Prevent spurious wakeup, if that happens the thread will sleep for the remaining time.
+    while (time_left > 0) {
+        if (agent.wake.load()) {
+            error = ERR_INTERRUPT;
+            break;
+        }
+        agent.blocking_cv.wait_for(time_left);
+        time_left = milliseconds - (os::current_time_milliseconds() - now);
+    }
 }
 
-void Management::register_thread(VMThread &thread) {
-    // TODO: Requires thread safety.
-    VMThread **address = this->allocate();
-    *address = &thread;
+void VMThread::wake() {
+    // A sleeping thread cannot wake itself, or a non-slept thread should not wake itself.
+    assert((embedded.id() == os::Thread::current_thread_id() &&
+            veil::implementation_fault("Attempt to sleep another thread", VeilGetLineInfo)));
+
+    BlockingAgent &agent = this->blocking_agent;
+    agent.wake.store(true);
+    agent.blocking_cv.notify();
 }
 
-VMService::VMService(std::string &name) : HasName(name) {}
+void VMThread::block(uint32 &error) {
+    error = veil::ERR_NONE;
+
+    // Blocking can only be done by the thread itself.
+    assert((embedded.id() != os::Thread::current_thread_id() &&
+            veil::implementation_fault("Attempt to sleep another thread", VeilGetLineInfo)));
+
+    BlockingAgent &agent = this->blocking_agent;
+    agent.wake.store(false);
+
+    while (true) {
+        if (agent.wake.load()) {
+            error = ERR_INTERRUPT;
+            break;
+        }
+        agent.blocking_cv.wait();
+    }
+}

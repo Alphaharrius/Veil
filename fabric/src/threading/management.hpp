@@ -34,30 +34,49 @@ namespace veil::threading {
                       public vm::Constituent<VMThread> {
     public:
         explicit VMService(std::string &name);
+
+        void interrupt();
     };
 
-    class VMThread : public memory::HeapObject, public vm::HasName,
-                     public vm::Constituent<Runtime>, public vm::Constituent<Management> {
+    class VMThread : public memory::ArenaObject, public vm::Constituent<Management> {
+    private:
+        struct BlockingAgent {
+            veil::os::ConditionVariable blocking_cv;
+            os::atomic_bool wake;
+
+            BlockingAgent();
+        };
+
     public:
-        explicit VMThread(std::string &name, Management &management);
+        explicit VMThread(Management &management);
 
         void start(VMService &service, uint32 &error);
 
         void join(uint32 &error);
 
-        void interrupt();
+        // TODO: Implement pause API.
+
+        void wake();
 
     protected:
-        bool is_interrupted();
+        void sleep(uint32 milliseconds, uint32 &error);
+
+        void block(uint32 &error);
 
     private:
         os::Thread embedded;
-        std::atomic_bool interrupted;
+
+        BlockingAgent blocking_agent;
+
+        void interrupt();
+
+        friend class Management;
+        friend void VMService::interrupt();
     };
 
-    class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread *> {
-    private:
-        void register_thread(VMThread &thread);
+    class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread> {
+    public:
+        void start_service(VMService &service, uint32 &error);
     };
 
 }
