@@ -14,7 +14,9 @@ file(GLOB fabric_src
         fabric/src/threading/*.hpp
         fabric/src/threading/*.cpp
         fabric/src/vm/*.hpp
-        fabric/src/vm/*.cpp)
+        fabric/src/vm/*.cpp
+        fabric/src/util/*.hpp
+        fabric/src/util/*.cpp)
 
 add_executable(
         ${PROJECT_NAME}
