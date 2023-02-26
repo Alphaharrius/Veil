@@ -26,13 +26,11 @@
 
 #endif
 
-#include <cstdio>
-
 #include "src/threading/os.hpp"
 #include "src/vm/structures.hpp"
 #include "src/vm/diagnostics.hpp"
 #include "src/memory/os.hpp"
-#include "src/threading/config.hpp"
+#include "src/util/conversions.hpp"
 
 using namespace veil::os;
 
@@ -433,7 +431,7 @@ ConditionVariable::~ConditionVariable() {
 #   endif
 }
 
-bool ConditionVariable::wait_for(int32 milliseconds) {
+bool ConditionVariable::wait_for(uint32 milliseconds) {
     bool timed_out = false;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
@@ -459,7 +457,7 @@ bool ConditionVariable::wait_for(int32 milliseconds) {
     struct timeval now = {};
     gettimeofday(&now, nullptr);
 
-    int64 abs_nsecs = now.tv_usec * 1000LL + milliseconds * 1000000LL;
+    int64 abs_nsecs = now.tv_usec * 1000LL + util::to_signed(milliseconds) * 1000000LL;
 
     struct timespec ts = {};
     ts.tv_sec = now.tv_sec + abs_nsecs / 1000000000LL;

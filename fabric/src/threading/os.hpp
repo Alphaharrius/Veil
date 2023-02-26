@@ -70,7 +70,7 @@ namespace veil::os {
 
         void wait();
 
-        bool wait_for(int32 milliseconds);
+        bool wait_for(uint32 milliseconds);
 
         void notify();
 
