@@ -47,7 +47,7 @@ namespace veil {
 #define VeilGetLineInfo veil::LineInfo(__FILE__, __func__, __LINE__)
 
 #if defined(VEIL_ENABLE_DEBUG)
-#define VeilAssert(expression, message) if (!(expression)) { veil::assertion_error(message, VeilGetLineInfo); }
+#define VeilAssert(expression, message) { if (!(expression)) veil::assertion_error(message, VeilGetLineInfo); }
 #else
 #define VeilAssert(expression, message) {}
 #endif
