@@ -76,7 +76,7 @@ namespace veil::os {
 
         void store(bool value) const;
 
-        bool exchange(bool value) const;
+        [[nodiscard]] bool exchange(bool value) const;
 
     private:
         atomic_u32 embedded;
