@@ -113,11 +113,10 @@ Thread::~Thread() {
 #   endif
 }
 
-void Thread::start(vm::Executable &callable, uint32 &error) {
+void Thread::start(vm::Executable &callable) {
     if (this->started)
         veil::implementation_fault("Starting a started thread.", VeilGetLineInfo);
 
-    error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createthread
@@ -134,10 +133,8 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
                                 (LPDWORD) &wts->id);
     if (thread == nullptr) {
         switch (GetLastError()) {
-        case ERROR_NOT_ENOUGH_MEMORY: {
-            error = threading::ERR_NO_RES;
-            return;
-        }
+        case ERROR_NOT_ENOUGH_MEMORY:
+            veil::force_exit_on_error("Insufficient resources to create another thread.", VeilGetLineInfo);
         default:
             veil::force_exit_on_error("Invalid state of Win32 error.", VeilGetLineInfo);
         }
@@ -158,10 +155,9 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
 
     if (pthread_create(&pts->embedded, nullptr, &pthread_thread_function, &callable)) {
         int err = errno;
-        if (err == EAGAIN) {
-            error = threading::ERR_NO_RES;
-            return;
-        } else
+        if (err == EAGAIN)
+            veil::force_exit_on_error("Insufficient resources to create another thread.", VeilGetLineInfo);
+        else
             veil::force_exit_on_error("Invalid state of pthread error :: " + std::to_string(err), VeilGetLineInfo);
     }
     this->native_struct = pts;
@@ -169,20 +165,18 @@ void Thread::start(vm::Executable &callable, uint32 &error) {
     this->started = true;
 }
 
-void Thread::join(uint32 &error) {
+void Thread::join() {
     if (!this->started)
         veil::implementation_fault("Thread joined before started.", VeilGetLineInfo);
 
-    error = veil::ERR_NONE;
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/synchapi/nf-synchapi-waitforsingleobject
     auto *wts = (Win32ThreadStruct *) this->native_struct;
-    // NOTE: The error code of this method is not clear, thus we will use threading::ERR_INV_JOIN as a failed status.
-    if (WaitForSingleObject(wts->embedded, INFINITE) == WAIT_FAILED) {
-        error = threading::ERR_INV_JOIN;
-        return;
-    }
+    // NOTE: The error code of this method is not clear.
+    if (WaitForSingleObject(wts->embedded, INFINITE) == WAIT_FAILED)
+        veil::force_exit_on_error("Failed to join thread :: " + std::to_string(GetLastError()), VeilGetLineInfo);
+
     // Implementation of the following have taken reference from:
     // https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
     if (!CloseHandle(wts->embedded)) {
@@ -199,11 +193,9 @@ void Thread::join(uint32 &error) {
         case 0:
             return;
         case EDEADLK:
-            error = threading::ERR_DEADLOCK;
-            return;
+            veil::implementation_fault("Deadlock detected on thread join.", VeilGetLineInfo);
         case EINVAL:
-            error = threading::ERR_INV_JOIN;
-            return;
+            veil::implementation_fault("Another thread is waiting to join with this thread.", VeilGetLineInfo);
         default:
             veil::force_exit_on_error("Invalid state of pthread error :: " + std::to_string(err), VeilGetLineInfo);
         }

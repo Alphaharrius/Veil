@@ -91,9 +91,9 @@ namespace veil::os {
 
         ~Thread();
 
-        void start(vm::Executable &callable, uint32 &error);
+        void start(vm::Executable &callable);
 
-        void join(uint32 &error);
+        void join();
 
         uint64 id();
 
