@@ -72,6 +72,8 @@ namespace veil::vm {
 
         void bind(R &root);
 
+        void unbind();
+
         R *get_root();
 
     protected:
@@ -81,6 +83,11 @@ namespace veil::vm {
     template<class R>
     void Constituent<R>::bind(R &r) {
         this->root = &r;
+    }
+
+    template<class R>
+    void Constituent<R>::unbind() {
+        this->root = nullptr;
     }
 
     template<class P>
