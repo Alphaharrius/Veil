@@ -28,7 +28,11 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
 
 ### Implementation roadmap
 
-1. [ ] Implement the memory management.
+1. [ ] Implement utility structures.
+   - [ ] ```HashTable```
+   - [ ] ```ArrayList```
+
+2. [ ] Implement the memory management.
     - [x] Implement the core modules.
         - [x] ```Management```
         - [x] ```Pointer```
@@ -36,7 +40,7 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
         - [x] Interface of ```Algorithm```
     - [ ] Implement the standard management algorithm.
 
-2. [ ] Implement all encapsulations of OS specific threading primitives.
+3. [ ] Implement all encapsulations of OS specific threading primitives.
     - [ ] ```Thread```
       - [x] Implement the basic encapsulations.
       - [x] Able to execute a ```VMService```.
@@ -46,17 +50,17 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [x] Atomics
     - [x] Add handling for spurious wakeup of ```ConditionVariable```.
 
-3. [x] Implement VM specific threading primitives.
+4. [x] Implement VM specific threading primitives.
     - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
 
-4. [x] Exchange all existing usage of ```<atomic>``` and ```<condition_variable>``` to the encapsulations.
+5. [x] Exchange all existing usage of ```<atomic>``` and ```<condition_variable>``` to the encapsulations.
     - [x] ```Queue```
 
-5. [ ] Implement the thread management.
+6. [ ] Implement the thread management.
     - [ ] All management's functionality should be protected by a mutex.
     - [ ] Method to interrupt all thread at once.
 
-6. [ ] Implement the Veil execution environment.
+7. [ ] Implement the Veil execution environment.
     - [ ] Design the Veil VM bytecode specifications.
     - [ ] Implement the Veil bytecode interpreter.
     - [ ] Implement ```VeilThread```.
