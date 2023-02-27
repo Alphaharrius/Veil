@@ -1,6 +1,6 @@
 # Veil
 
-The implementation of the Veil programming language.
+Veil is planned to be a gradually typed, and multi-paradigm programming language supports both object-oriented & functional programming.
 
 This project serves as an exercise on ```C++``` and a way to learn how a programming language with a runtime could work under the hood. My current goal of this project is to complete the runtime, then implement a simple compiler in whatever language I feel comfortable in (```Python``` or ```Java```), and re-implement the compiler in Veil language as a proof of principle.
 
