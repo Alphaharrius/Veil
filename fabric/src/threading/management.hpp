@@ -41,10 +41,21 @@ namespace veil::threading {
     class VMThread : public memory::ArenaObject, public vm::Constituent<Management> {
     private:
         struct BlockingAgent {
-            veil::os::ConditionVariable blocking_cv;
-            os::atomic_bool wake;
+            os::ConditionVariable blocking_cv;
+            os::atomic_bool signal_wake;
 
             BlockingAgent();
+        };
+
+        struct PauseAgent {
+            os::Mutex caller_m;
+            os::ConditionVariable caller_cv;
+
+            os::atomic_bool signal_pause;
+            os::atomic_bool paused;
+            os::atomic_bool signal_resume;
+
+            PauseAgent();
         };
 
     public:
@@ -54,8 +65,6 @@ namespace veil::threading {
 
         void join(uint32 &error);
 
-        // TODO: Implement pause API.
-
         void wake();
 
     protected:
@@ -63,12 +72,23 @@ namespace veil::threading {
 
         void block(uint32 &error);
 
+        bool check_interrupt();
+
+        void check_pause();
+
     private:
         os::Thread embedded;
 
         BlockingAgent blocking_agent;
+        PauseAgent pause_agent;
+
+        os::atomic_bool interrupted;
 
         void interrupt();
+
+        void pause(uint32 &error);
+
+        void resume();
 
         friend class Management;
         friend void VMService::interrupt();

@@ -25,7 +25,11 @@ void VMService::interrupt() {
     this->vm::Constituent<VMThread>::get_root()->interrupt();
 }
 
-VMThread::BlockingAgent::BlockingAgent() : wake(false) {}
+VMThread::BlockingAgent::BlockingAgent() : signal_wake(false) {}
+
+VMThread::PauseAgent::PauseAgent() : signal_pause(false), paused(false), signal_resume(false) {}
+
+VMThread::VMThread(Management &management) : vm::Constituent<Management>(management), interrupted(false) {}
 
 void VMThread::start(VMService &service, uint32 &error) {
     service.bind(*this);
@@ -36,22 +40,65 @@ void VMThread::join(uint32 &error) {
     embedded.join(error);
 }
 
-void VMThread::interrupt() {
-    struct InterruptAccess : public vm::Function<bool &, bool> {
-        bool execute(bool &interrupt) override {
-            if (interrupt)
-                return false;
-            interrupt = true;
-        }
-    };
-    // If an interrupt order is placed, this thread will abandon all sleep or blocking.
-    // TODO: Wake the current thread.
-    // The thread who made this request will wait until this thread receives the order.
-    static auto consumer = InterruptAccess();
-//    interrupt_channel.apply(consumer);
+void VMThread::pause(uint32 &error) {
+    // Pause should be requested by another thread.
+    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to pause itself.");
+
+    PauseAgent &agent = this->pause_agent;
+    // One pause request at a time, and should not be happened simultaneously with resume action.
+    agent.caller_m.lock();
+    // Signal the pause and wait until this thread block.
+    agent.signal_pause.store(true);
+    while (!agent.paused.load())
+        agent.caller_cv.wait();
+    // Reset the signal.
+    agent.signal_pause.store(false);
+    agent.caller_m.unlock();
 }
 
-VMThread::VMThread(Management &management) : vm::Constituent<Management>(management) {}
+void VMThread::check_pause() {
+    PauseAgent &agent = this->pause_agent;
+    // Check if the signal is raised, do nothing if false.
+    if (!agent.signal_pause.load())
+        return;
+    // Signal the pause requester that the thread is paused.
+    agent.paused.store(true);
+    // Wake the pause requester thread.
+    agent.caller_cv.notify();
+
+    uint32 _; // The only error ERR_INTERRUPT is ignored since a paused thread cannot be waked up by VMThread::wake().
+    while (!agent.signal_resume.load()) block(_);
+    // Reset the pause state.
+    agent.paused.store(false);
+}
+
+void VMThread::resume() {
+    // Resume should be requested by another thread.
+    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to resume itself.");
+
+    PauseAgent &agent = this->pause_agent;
+    // One resume action at a time, and should not be happened simultaneously with a pause action.
+    agent.caller_m.lock();
+    // Signal the thread to resume.
+    agent.signal_resume.store(true);
+    // Wake the paused thread until it awakes.
+    while (agent.paused.load()) wake();
+    // Reset the resume signal.
+    agent.signal_resume.store(false);
+    agent.caller_m.unlock();
+}
+
+void VMThread::interrupt() {
+    // Signal the interrupt.
+    interrupted.store(true);
+    // An interrupt request is a no-blocking action, the requester who wants to wait until the current thread joins
+    // should call VMThread::join() after this method.
+    wake();
+}
+
+bool VMThread::check_interrupt() {
+    return interrupted.load();
+}
 
 void VMThread::sleep(uint32 milliseconds, uint32 &error) {
     error = veil::ERR_NONE;
@@ -60,15 +107,15 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
     VeilAssert(embedded.id() == os::Thread::current_thread_id(), "Attempt to sleep another thread.");
 
     BlockingAgent &agent = this->blocking_agent;
-    agent.wake.store(false);
+    agent.signal_wake.store(false);
 
     uint64 now = os::current_time_milliseconds();
     uint64 time_left = milliseconds;
     // Prevent spurious wakeup, if that happens the thread will sleep for the remaining time.
     while (time_left > 0) {
         agent.blocking_cv.wait_for(time_left);
-        // VMThread::wake only works when called after the thread started blocking on the sleep_cv.
-        if (agent.wake.load()) {
+        // VMThread::signal_wake only works when called after the thread started blocking on the sleep_cv.
+        if (agent.signal_wake.load()) {
             error = ERR_INTERRUPT;
             break;
         }
@@ -77,11 +124,11 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
 }
 
 void VMThread::wake() {
-    // A sleeping thread cannot wake itself, or a non-slept thread should not wake itself.
-    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to wake the current thread itself.");
+    // A sleeping thread cannot signal_wake itself, or a non-slept thread should not signal_wake itself.
+    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to signal_wake the current thread itself.");
 
     BlockingAgent &agent = this->blocking_agent;
-    agent.wake.store(true);
+    agent.signal_wake.store(true);
     agent.blocking_cv.notify();
 }
 
@@ -92,12 +139,12 @@ void VMThread::block(uint32 &error) {
     VeilAssert(embedded.id() == os::Thread::current_thread_id(), "Attempt to block another thread.");
 
     BlockingAgent &agent = this->blocking_agent;
-    agent.wake.store(false);
+    agent.signal_wake.store(false);
 
     while (true) {
         agent.blocking_cv.wait();
-        // VMThread::wake only works when called after the thread started blocking on the sleep_cv.
-        if (agent.wake.load()) {
+        // VMThread::signal_wake only works when called after the thread started blocking on the sleep_cv.
+        if (agent.signal_wake.load()) {
             error = ERR_INTERRUPT;
             break;
         }
