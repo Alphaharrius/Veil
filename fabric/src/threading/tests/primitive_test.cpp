@@ -65,31 +65,12 @@ int main() {
         LockFunction func_1(1, &mutex);
         LockFunction func_2(2, &mutex);
 
-        uint32 error;
-        thread_0.start(func_0, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        thread_1.start(func_1, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        thread_2.start(func_2, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        thread_0.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
-        thread_1.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
-        thread_2.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
+        thread_0.start(func_0);
+        thread_1.start(func_1);
+        thread_2.start(func_2);
+        thread_0.join();
+        thread_1.join();
+        thread_2.join();
     }
     std::cout << "Done!" << std::endl;
     std::cout << "Begin test on condition variable." << std::endl;
@@ -104,38 +85,14 @@ int main() {
 
         veil::os::Thread notify_thread;
 
-        thread_0.start(wait_function_0, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        thread_1.start(wait_function_1, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        thread_2.start(wait_function_2, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        notify_thread.start(notify_function, error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread start failed: " << error << std::endl;
-        }
-        thread_0.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
-        thread_1.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
-        thread_2.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
-        notify_thread.join(error);
-        if (error != veil::ERR_NONE) {
-            std::cerr << "Thread join failed: " << error << std::endl;
-        }
+        thread_0.start(wait_function_0);
+        thread_1.start(wait_function_1);
+        thread_2.start(wait_function_2);
+        notify_thread.start(notify_function);
+        thread_0.join();
+        thread_1.join();
+        thread_2.join();
+        notify_thread.join();
     }
 
     return 0;
