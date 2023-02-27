@@ -25,6 +25,11 @@ void VMService::interrupt() {
     this->vm::Constituent<VMThread>::get_root()->interrupt();
 }
 
+void VMService::join() {
+    this->vm::Constituent<VMThread>::get_root()->join();
+    this->unbind();
+}
+
 VMThread::BlockingAgent::BlockingAgent() : signal_wake(false) {}
 
 VMThread::PauseAgent::PauseAgent() : signal_pause(false), paused(false), signal_resume(false) {}
