@@ -36,6 +36,8 @@ namespace veil::threading {
         explicit VMService(std::string &name);
 
         void interrupt();
+
+        void join();
     };
 
     class VMThread : public memory::ArenaObject, public vm::Constituent<Management> {
