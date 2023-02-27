@@ -67,11 +67,12 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
     uint64 time_left = milliseconds;
     // Prevent spurious wakeup, if that happens the thread will sleep for the remaining time.
     while (time_left > 0) {
+        agent.blocking_cv.wait_for(time_left);
+        // VMThread::wake only works when called after the thread started blocking on the sleep_cv.
         if (agent.wake.load()) {
             error = ERR_INTERRUPT;
             break;
         }
-        agent.blocking_cv.wait_for(time_left);
         time_left = milliseconds - (os::current_time_milliseconds() - now);
     }
 }
@@ -97,10 +98,11 @@ void VMThread::block(uint32 &error) {
     agent.wake.store(false);
 
     while (true) {
+        agent.blocking_cv.wait();
+        // VMThread::wake only works when called after the thread started blocking on the sleep_cv.
         if (agent.wake.load()) {
             error = ERR_INTERRUPT;
             break;
         }
-        agent.blocking_cv.wait();
     }
 }
