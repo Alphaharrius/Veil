@@ -284,3 +284,7 @@ bool atomic_bool::load() const {
 void atomic_bool::store(bool value) const {
     return embedded.store(value ? 1 : 0);
 }
+
+bool atomic_bool::exchange(bool value) const {
+    return embedded.exchange(value ? 1 : 0);
+}
