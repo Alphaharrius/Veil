@@ -102,6 +102,7 @@ void VMThread::interrupt() {
 }
 
 bool VMThread::check_interrupt() {
+    // Since interrupt is an end-of-life request for the thread, this flag will not be reset here.
     return interrupted.load();
 }
 
