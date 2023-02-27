@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "diagnostics.hpp"
+#include "src/vm/diagnostics.hpp"
 #include "src/veil.hpp"
 
 #pragma clang diagnostic push
@@ -24,15 +24,18 @@
 void veil::force_exit_on_error(std::string reason, LineInfo line_info) {
     std::cerr << "A critical error is detected by the runtime environment!" << std::endl
               << "Reason: " << reason << std::endl
-              << "At: method=" << line_info.function_name
-              << " (" << line_info.filename << ": " << line_info.line_number << ")" << std::endl
+              << "At: " << line_info.function_name << "() "
+              << line_info.filename << ":" << line_info.line_number << std::endl
               << "Runtime: " << veil::VM_NAME << " version(" << veil::VM_VERSION << ")" << std::endl;
     ::exit(1);
 }
 
-bool veil::implementation_fault(std::string reason, veil::LineInfo line_info) {
+void veil::implementation_fault(std::string reason, veil::LineInfo line_info) {
     veil::force_exit_on_error("Implementation fault :: " + reason, line_info);
-    return true;
+}
+
+void veil::assertion_error(std::string reason, veil::LineInfo line_info) {
+    veil::force_exit_on_error("Assertion error :: " + reason, line_info);
 }
 
 #pragma clang diagnostic pop

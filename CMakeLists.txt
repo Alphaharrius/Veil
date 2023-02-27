@@ -4,6 +4,8 @@ project(Veil)
 set(CMAKE_CXX_STANDARD 17)
 include_directories(fabric)
 
+add_compile_definitions(VEIL_ENABLE_DEBUG)
+
 file(GLOB fabric_src
         fabric/src/*.hpp
         fabric/src/*.cpp

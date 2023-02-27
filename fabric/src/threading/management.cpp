@@ -57,8 +57,7 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
     error = veil::ERR_NONE;
 
     // Sleep can only be done by the thread itself.
-    assert((embedded.id() == os::Thread::current_thread_id() &&
-            veil::implementation_fault("Attempt to sleep another thread", VeilGetLineInfo)));
+    VeilAssert(embedded.id() == os::Thread::current_thread_id(), "Attempt to sleep another thread.");
 
     BlockingAgent &agent = this->blocking_agent;
     agent.wake.store(false);
@@ -79,8 +78,7 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
 
 void VMThread::wake() {
     // A sleeping thread cannot wake itself, or a non-slept thread should not wake itself.
-    assert((embedded.id() != os::Thread::current_thread_id() &&
-            veil::implementation_fault("Attempt to sleep another thread", VeilGetLineInfo)));
+    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to wake the current thread itself.");
 
     BlockingAgent &agent = this->blocking_agent;
     agent.wake.store(true);
@@ -91,8 +89,7 @@ void VMThread::block(uint32 &error) {
     error = veil::ERR_NONE;
 
     // Blocking can only be done by the thread itself.
-    assert((embedded.id() == os::Thread::current_thread_id() &&
-            veil::implementation_fault("Attempt to sleep another thread", VeilGetLineInfo)));
+    VeilAssert(embedded.id() == os::Thread::current_thread_id(), "Attempt to block another thread.");
 
     BlockingAgent &agent = this->blocking_agent;
     agent.wake.store(false);

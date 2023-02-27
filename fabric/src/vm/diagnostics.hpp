@@ -38,10 +38,18 @@ namespace veil {
 
     void force_exit_on_error(std::string reason, LineInfo line_info);
 
-    bool implementation_fault(std::string reason, LineInfo line_info);
+    void implementation_fault(std::string reason, LineInfo line_info);
+
+    void assertion_error(std::string reason, LineInfo line_info);
 
 }
 
 #define VeilGetLineInfo veil::LineInfo(__FILE__, __func__, __LINE__)
+
+#if defined(VEIL_ENABLE_DEBUG)
+#define VeilAssert(expression, message) if (!(expression)) { veil::assertion_error(message, VeilGetLineInfo); }
+#else
+#define VeilAssert(expression, message) {}
+#endif
 
 #endif //VEIL_FABRIC_SRC_VM_DIAGNOSTICS_HPP
