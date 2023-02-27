@@ -85,8 +85,7 @@ namespace veil::vm {
 
     template<class P>
     P *Constituent<P>::get_root() {
-        assert((this->root != nullptr &&
-                veil::implementation_fault("Root unbound.", VeilGetLineInfo)));
+        assert(this->root != nullptr);
         return this->root;
     }
 
@@ -107,8 +106,7 @@ namespace veil::vm {
 
     template<class C>
     C *Composite<C>::get_composition() {
-        assert((this->composition == nullptr &&
-                veil::implementation_fault("Composition unbound.", VeilGetLineInfo)));
+        assert(this->composition == nullptr);
         return this->composition;
     }
 
