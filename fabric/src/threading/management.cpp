@@ -34,15 +34,23 @@ VMThread::BlockingAgent::BlockingAgent() : signal_wake(false) {}
 
 VMThread::PauseAgent::PauseAgent() : signal_pause(false), paused(false), signal_resume(false) {}
 
-VMThread::VMThread(Management &management) : vm::Constituent<Management>(management), interrupted(false) {}
+VMThread::VMThread(Management &management) :
+        idle(true), vm::Constituent<Management>(management), interrupted(false) {}
 
-void VMThread::start(VMService &service, uint32 &error) {
+bool VMThread::start(VMService &service) {
+    bool idle_state = idle.exchange(false);
+    if (!idle_state) return false;
+
     service.bind(*this);
-    embedded.start(service, error);
+    embedded.start(service);
 }
 
-void VMThread::join(uint32 &error) {
-    embedded.join(error);
+void VMThread::join() {
+    embedded.join();
+
+    // Reset all state to default.
+    interrupted.store(false);
+    idle.store(true);
 }
 
 void VMThread::pause(uint32 &error) {

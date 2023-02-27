@@ -61,9 +61,9 @@ namespace veil::threading {
     public:
         explicit VMThread(Management &management);
 
-        void start(VMService &service, uint32 &error);
+        bool start(VMService &service);
 
-        void join(uint32 &error);
+        void join();
 
         void wake();
 
@@ -77,6 +77,8 @@ namespace veil::threading {
         void check_pause();
 
     private:
+        os::atomic_bool idle;
+
         os::Thread embedded;
 
         BlockingAgent blocking_agent;
