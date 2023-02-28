@@ -124,9 +124,9 @@ void VMThread::resume() {
     // Early bird exit.
     if (idle.load()) return;
 
-    PauseAgent &agent = this->pause_agent;
+    PauseAgent &p_agent = this->pause_agent;
     // One resume action at a time, and should not be happened simultaneously with a pause action.
-    agent.caller_m.lock();
+    p_agent.caller_m.lock();
 
     // If the idle flag is set, then the resume operation should not be continued since it will be terminated anyway.
     // NOTE: This line is placed behind agent.caller_m.lock() to ensure all pause requests are placed in either case:
@@ -137,14 +137,18 @@ void VMThread::resume() {
     // After the join operation, this pause action will be cancelled.
     if (!idle.load()) {
         // Signal the thread to resume.
-        agent.signal_resume.store(true);
+        p_agent.signal_resume.store(true);
         // Wake the paused thread until it awakes if and only if it is not idle.
-        while (!idle.load() && agent.paused.load()) wake();
+        BlockingAgent &b_agent = this->blocking_agent;
+        while (!idle.load() && p_agent.paused.load()) {
+            b_agent.signal_wake.store(true);
+            b_agent.blocking_cv.notify();
+        }
         // Reset the resume signal.
-        agent.signal_resume.store(false);
+        p_agent.signal_resume.store(false);
     }
 
-    agent.caller_m.unlock();
+    p_agent.caller_m.unlock();
 }
 
 void VMThread::interrupt() {
