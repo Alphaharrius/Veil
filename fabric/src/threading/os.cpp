@@ -31,6 +31,7 @@
 #include "src/vm/diagnostics.hpp"
 #include "src/memory/os.hpp"
 #include "src/util/conversions.hpp"
+#include "src/threading/config.hpp"
 
 using namespace veil::os;
 
