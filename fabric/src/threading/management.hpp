@@ -67,8 +67,6 @@ namespace veil::threading {
 
         void join();
 
-        void wake();
-
     protected:
         void sleep(uint32 milliseconds, uint32 &error);
 
@@ -90,7 +88,7 @@ namespace veil::threading {
 
         void interrupt();
 
-        void pause(uint32 &error);
+        void pause();
 
         void resume();
 
@@ -100,7 +98,12 @@ namespace veil::threading {
 
     class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread> {
     public:
-        void start_service(VMService &service, uint32 &error);
+        void start_service(VMService &service);
+
+        void global_pause();
+
+    private:
+        os::Mutex thread_arena_m;
     };
 
 }
