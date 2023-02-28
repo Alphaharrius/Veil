@@ -16,12 +16,12 @@
 #ifndef VEIL_FABRIC_SRC_MEMORY_MANAGEMENT_HPP
 #define VEIL_FABRIC_SRC_MEMORY_MANAGEMENT_HPP
 
-#include <atomic>
 #include <string>
 
 #include "src/typedefs.hpp"
 #include "src/vm/structures.hpp"
 #include "src/core/runtime.forward.hpp"
+#include "src/threading/os.hpp"
 
 /// The namespace of the memory management system of the Veil virtual machine, this system is designed to provide only
 /// the template of the memory access interface visible to the rest of the VM implementation. Any implementation of the
@@ -263,7 +263,7 @@ namespace veil::memory {
 
     private:
         // TODO: Add documentations.
-        std::atomic_uint64_t mapped_heap_size;
+        os::atomic_u64 mapped_heap_size;
 
         // TODO: Add documentations.
         Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size);
