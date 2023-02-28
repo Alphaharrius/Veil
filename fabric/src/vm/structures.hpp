@@ -105,6 +105,8 @@ namespace veil::vm {
 
         void bind(C &composition);
 
+        void unbind();
+
         C *get_composition();
 
     private:
@@ -120,6 +122,11 @@ namespace veil::vm {
     template<class C>
     void Composite<C>::bind(C &c) {
         this->composition = &c;
+    }
+
+    template<class C>
+    void Composite<C>::unbind() {
+        this->composition = nullptr;
     }
 
     class Executable {
