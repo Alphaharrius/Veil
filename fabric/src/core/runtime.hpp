@@ -25,12 +25,10 @@
 
 namespace veil {
 
-    class Runtime :
-            public memory::ValueObject,
-            public vm::Composite<memory::Management>,
-            public vm::Composite<threading::Management> {
-    private:
-        Runtime(memory::Management &memory_management, threading::Management &threading_management);
+    class Runtime : public memory::ValueObject,
+                    public vm::Composite<memory::Management>, public vm::Composite<threading::Management> {
+    public:
+        Runtime();
     };
 
 }

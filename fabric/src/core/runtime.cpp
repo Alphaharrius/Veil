@@ -15,5 +15,6 @@
 
 #include "src/core/runtime.hpp"
 
-veil::Runtime::Runtime(
-        veil::memory::Management &memory_management, veil::threading::Management &threading_management) {}
+using namespace veil;
+
+Runtime::Runtime() = default;
