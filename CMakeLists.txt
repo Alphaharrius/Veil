@@ -8,7 +8,6 @@ add_compile_definitions(VEIL_ENABLE_DEBUG)
 
 file(GLOB fabric_src
         fabric/src/*.hpp
-        fabric/src/*.cpp
         fabric/src/core/*.hpp
         fabric/src/core/*.cpp
         fabric/src/memory/*.hpp
@@ -22,7 +21,7 @@ file(GLOB fabric_src
 
 add_executable(
         ${PROJECT_NAME}
-        main.cpp
+        fabric/src/veil.cpp
         ${fabric_src})
 
 add_executable(
@@ -48,4 +47,9 @@ add_executable(
 add_executable(
         atomic_test
         fabric/src/threading/tests/atomic_test.cpp
+        ${fabric_src})
+
+add_executable(
+        threading_management_test
+        fabric/src/threading/tests/management_test.cpp
         ${fabric_src})
