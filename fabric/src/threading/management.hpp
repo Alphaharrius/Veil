@@ -35,12 +35,32 @@ namespace veil::threading {
     public:
         explicit VMService(std::string &name);
 
+        virtual void run() = 0;
+
+        void execute() override;
+
+        void sleep(uint32 milliseconds, uint32 &error);
+
         void interrupt();
 
         void join();
+
+        void pause();
+
+        void resume();
+
+        bool check_interrupt();
+
+        void check_pause();
+
+    private:
+        os::ConditionVariable join_cv;
+        os::atomic_bool join_flag;
+
+        volatile bool completed;
     };
 
-    class VMThread : public memory::ArenaObject, public vm::Constituent<Management> {
+    class VMThread : public memory::ArenaObject, public vm::Constituent<Management>, public vm::Composite<VMService> {
     private:
         struct BlockingAgent {
             os::ConditionVariable blocking_cv;
@@ -50,7 +70,8 @@ namespace veil::threading {
         };
 
         struct PauseAgent {
-            os::Mutex caller_m;
+            os::atomic_bool caller_flag;
+            os::Mutex caller_m; // TODO: Might not need this if there are a flag.
             os::ConditionVariable caller_cv;
 
             os::atomic_bool signal_pause;
@@ -63,7 +84,7 @@ namespace veil::threading {
     public:
         explicit VMThread(Management &management);
 
-        bool start(VMService &service);
+        void start(VMService &service);
 
         void join();
 
@@ -78,6 +99,7 @@ namespace veil::threading {
 
     private:
         os::atomic_bool idle;
+        os::atomic_bool stopped;
 
         os::Thread embedded;
 
@@ -92,13 +114,25 @@ namespace veil::threading {
 
         void resume();
 
+        void reset();
+
         friend class Management;
+        friend void VMService::sleep(uint32 milliseconds, uint32 &error);
+        friend bool VMService::check_interrupt();
+        friend void VMService::check_pause();
         friend void VMService::interrupt();
+        friend void VMService::pause();
+        friend void VMService::resume();
+        friend void VMService::execute();
     };
 
     class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread> {
     public:
-        void start_service(VMService &service);
+        void start(VMService &service);
+
+        void pause_all();
+
+        void resume_all();
 
     private:
         os::Mutex thread_arena_m;
