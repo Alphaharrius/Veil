@@ -49,6 +49,7 @@ bool VMThread::start(VMService &service) {
 void VMThread::join() {
     embedded.join();
 
+    // Performing final clean up.
     BlockingAgent &b_agent = this->blocking_agent;
     PauseAgent &p_agent = this->pause_agent;
     p_agent.caller_m.lock();
@@ -66,7 +67,7 @@ void VMThread::join() {
 
     // Mark this thread construct as state idle.
     idle.store(true);
-    p_agent.caller_m.unlock();
+    p_agent.caller_m.unlock(); // A new service can be hosted by the thread again.
 }
 
 void VMThread::pause() {
@@ -238,12 +239,5 @@ void Management::start_service(VMService &service) {
     }
 
     found->start(service);
-    thread_arena_m.unlock();
-}
-
-void Management::global_pause() {
-    memory::TArenaIterator<VMThread> iterator(*this);
-    thread_arena_m.lock();
-    VMThread *current = iterator.next();
     thread_arena_m.unlock();
 }

@@ -100,8 +100,6 @@ namespace veil::threading {
     public:
         void start_service(VMService &service);
 
-        void global_pause();
-
     private:
         os::Mutex thread_arena_m;
     };
