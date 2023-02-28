@@ -43,6 +43,7 @@ bool VMThread::start(VMService &service) {
 
     service.bind(*this);
     embedded.start(service);
+    return true;
 }
 
 void VMThread::join() {
@@ -128,7 +129,7 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
     // Prevent spurious wakeup, if that happens the thread will sleep for the remaining time.
     while (time_left > 0) {
         agent.blocking_cv.wait_for(time_left);
-        // VMThread::signal_wake only works when called after the thread started blocking on the sleep_cv.
+        // VMThread::wake only works when called after the thread started blocking on the sleep_cv.
         if (agent.signal_wake.load()) {
             error = ERR_INTERRUPT;
             break;
@@ -138,8 +139,8 @@ void VMThread::sleep(uint32 milliseconds, uint32 &error) {
 }
 
 void VMThread::wake() {
-    // A sleeping thread cannot signal_wake itself, or a non-slept thread should not signal_wake itself.
-    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to signal_wake the current thread itself.");
+    // A sleeping thread cannot wake itself, or a non-slept thread should not wake itself.
+    VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to wake the current thread itself.");
 
     BlockingAgent &agent = this->blocking_agent;
     agent.signal_wake.store(true);
