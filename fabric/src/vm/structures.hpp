@@ -92,7 +92,7 @@ namespace veil::vm {
 
     template<class P>
     P *Constituent<P>::get_root() {
-        assert(this->root != nullptr);
+        VeilAssert(this->root != nullptr, "Root not bind.");
         return this->root;
     }
 
@@ -113,7 +113,7 @@ namespace veil::vm {
 
     template<class C>
     C *Composite<C>::get_composition() {
-        assert(this->composition == nullptr);
+        VeilAssert(this->composition != nullptr, "Composition not bind.");
         return this->composition;
     }
 
