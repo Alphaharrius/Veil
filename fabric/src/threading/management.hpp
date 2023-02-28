@@ -70,8 +70,8 @@ namespace veil::threading {
         };
 
         struct PauseAgent {
-            os::atomic_bool caller_flag;
-            os::Mutex caller_m; // TODO: Might not need this if there are a flag.
+            os::atomic_bool caller_flag; // TODO: Use this to ensure thread safety of state between caller & target.
+            os::Mutex caller_m; // TODO: Use this for pause synchronization only.
             os::ConditionVariable caller_cv;
 
             os::atomic_bool signal_pause;
