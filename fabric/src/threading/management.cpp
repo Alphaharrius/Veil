@@ -108,6 +108,7 @@ bool VMThread::start(VMService &service) {
     this->vm::Composite<VMService>::bind(service);
     service.bind(*this);
     PauseAgent &agent = this->pause_agent;
+    // Open the states for pause so that pause request can be placed.
     agent.pause_state.open();
     agent.resume_state.open();
 
@@ -159,6 +160,7 @@ void VMThread::pause() { // TODO: Pause action should have bool return to indica
     // One request at a time, and should not be happened simultaneously with resume action.
     agent.caller_m.lock();
 
+    // TODO: Add some return to indicate whether the thread is idle or there is another ongoing pause.
     if (agent.pause_state.tick())
         while (agent.pause_state.is_tok()) agent.caller_cv.wait();
 
@@ -187,6 +189,7 @@ void VMThread::resume() {
     p_agent.caller_m.lock();
 
     BlockingAgent &b_agent = this->blocking_agent;
+    // TODO: Add some return to indicate whether the thread is idle or there is another ongoing resume.
     if (p_agent.resume_state.tick()) {
         b_agent.signal_wake.store(true);
         while (p_agent.resume_state.is_tok()) b_agent.blocking_cv.notify();
