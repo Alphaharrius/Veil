@@ -68,6 +68,7 @@ void VMService::interrupt() {
 }
 
 void VMService::join() {
+    // TODO: Use os::Thread::static_sleep() in this loop.
     // If the service is not completed, it can be joined.
     while (!completed &&
            // Tick the join_state so that this service knows there are someone request to join with it.
