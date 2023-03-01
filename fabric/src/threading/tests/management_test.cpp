@@ -47,7 +47,7 @@ public:
 
     void run() override {
         uint32 _;
-        this->sleep(4500, _);
+        this->sleep(4900, _);
         std::cout << "|" << std::endl;
         target->pause_all();
         std::cout << "[]" << std::endl;
@@ -78,4 +78,12 @@ int main() {
     service_2.join();
     service_3.join();
     service_4.join();
+
+    veil::memory::TArenaIterator<VMThread> iterator(management);
+    VMThread *current = iterator.next();
+    while (current != nullptr) {
+        current = iterator.next();
+    }
+
+    return 0;
 }

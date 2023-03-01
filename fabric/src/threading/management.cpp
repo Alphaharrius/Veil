@@ -13,22 +13,41 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include <iostream>
 #include "src/threading/management.hpp"
 #include "src/core/runtime.hpp"
 #include "src/vm/os.hpp"
 
 using namespace veil::threading;
 
-VMService::VMService(std::string &name) : HasName(name), join_flag(false), completed(false) {}
+LockFreeState::LockFreeState() : flag(CLOSED) {}
+
+void LockFreeState::open() { flag.store(TICK); }
+
+bool LockFreeState::tick() { return TICK == flag.compare_exchange(TICK, TOK); }
+
+bool LockFreeState::tok() { return TOK == flag.compare_exchange(TOK, TICK); }
+
+bool LockFreeState::is_tick() { return TICK == flag.load(); }
+
+bool LockFreeState::is_tok() { return TOK == flag.load(); }
+
+bool LockFreeState::close() {
+    uint32 ret = flag.compare_exchange(TICK, CLOSED);
+    return TICK == ret;
+}
+
+VMService::VMService(std::string &name) : HasName(name), completed(false) {}
 
 void VMService::execute() {
+    join_state.open();
     this->run();
-    this->completed = true;
 
-    // Check if there are thread joining with this thread.
-    if (join_flag.exchange(true))
-        // Wake the joining thread until it wakes.
-        while (join_flag.load()) join_cv.notify();
+    // Mark the service as completed, so that the join requester waiting on the join_cv can confirm of wake.
+    this->completed = true;
+    // Check if there are thread joining with this thread, if so wake the joining thread until it wakes.
+    while (!join_state.close())
+        join_cv.notify();
 
     // The service is finished by now, start cleaning up.
     auto *thread = this->vm::Constituent<VMThread>::get_root();
@@ -49,12 +68,14 @@ void VMService::interrupt() {
 }
 
 void VMService::join() {
-    if (join_flag.exchange(true)) return;
+    // If the service is not completed, it can be joined.
+    while (!completed &&
+           // Tick the join_state so that this service knows there are someone request to join with it.
+           !join_state.tick()) {}
 
+    // Wait until the service is completed.
     while (!completed) join_cv.wait();
-
-    // Signal this thread that the joining thread is awake.
-    join_flag.store(false);
+    join_state.tok();
 }
 
 void VMService::pause() {
@@ -75,19 +96,23 @@ void VMService::check_pause() {
 
 VMThread::BlockingAgent::BlockingAgent() : signal_wake(false) {}
 
-VMThread::PauseAgent::PauseAgent() :
-        caller_flag(false), signal_pause(false), paused(false), signal_resume(false) {}
+VMThread::PauseAgent::PauseAgent() = default;
 
 VMThread::VMThread(Management &management) :
-        vm::Constituent<Management>(management), idle(true), stopped(true), interrupted(false) {}
+        vm::Constituent<Management>(management), idle(true), interrupted(false) {}
 
-void VMThread::start(VMService &service) {
-    idle.store(false);
-    stopped.store(false);
+bool VMThread::start(VMService &service) {
+    if (!idle.exchange(false)) return false;
+
     this->vm::Composite<VMService>::bind(service);
     service.bind(*this);
+    PauseAgent &agent = this->pause_agent;
+    agent.pause_state.open();
+    agent.resume_state.open();
+
     embedded.start(service);
-    stopped.store(true); // TODO: Use exchange of some flag to check if there are threads waiting for caller_cv.
+
+    return true;
 }
 
 void VMThread::join() {
@@ -98,23 +123,27 @@ void VMThread::reset() {
     // Performing final clean up.
     BlockingAgent &b_agent = this->blocking_agent;
     PauseAgent &p_agent = this->pause_agent;
+
+    // Clearing all pause request.
+    while (!p_agent.pause_state.close()) {
+        p_agent.pause_state.tok();
+        p_agent.caller_cv.notify();
+    }
+
+    // Clearing all resume request.
+    while (!p_agent.resume_state.close()) p_agent.resume_state.tok();
+
+    // Ensure all pause & resume request have exited their corresponding method.
     p_agent.caller_m.lock();
+    p_agent.caller_m.unlock();
 
-    // Notify whoever placed the pause request to prevent them from sleeping forever.
-    p_agent.caller_cv.notify();
-
-    // Reset all state to default.
+    // Reset to default.
     b_agent.signal_wake.store(false);
-
-    p_agent.signal_pause.store(false);
-    p_agent.paused.store(false);
-    p_agent.signal_resume.store(false);
-
     interrupted.store(false);
 
-    // Mark this thread construct as state idle.
+    // Mark this thread construct as state idle, after this the thread construct can be reused by the thread management
+    // to host a new VMService.
     idle.store(true);
-    p_agent.caller_m.unlock(); // A new service can be hosted by the thread again.
 }
 
 void VMThread::pause() { // TODO: Pause action should have bool return to indicate if its the first call.
@@ -122,47 +151,29 @@ void VMThread::pause() { // TODO: Pause action should have bool return to indica
     if (embedded.id() == os::Thread::current_thread_id())
         return;
 
+    PauseAgent &agent = this->pause_agent;
     // Early bird exit.
-    if (stopped.load()) return; // TODO: Use exchange of some flag to check if pause is permitted.
+    if (!agent.pause_state.is_tick()) return;
 
-    PauseAgent *agent = &this->pause_agent;
-    // One pause request at a time, and should not be happened simultaneously with resume action.
-    agent->caller_m.lock();
+    // One request at a time, and should not be happened simultaneously with resume action.
+    agent.caller_m.lock();
 
-    // If the stopped flag is set, then the pause operation should not be continued since there will be no thread to
-    // wake up the requesting thread.
-    // NOTE: This line is placed behind agent.caller_m.lock() to ensure all pause requests are placed in either case:
-    // -
-    // Before the join (thread termination) operation, thus the agent.caller_cv.notify() in VMThread::join() can wake
-    // the requester to prevent it to be slept forever.
-    // -
-    // After the join operation, this pause action will be cancelled.
-    if (!stopped.load()) {
-        // Signal the pause and wait until this thread block.
-        agent->signal_pause.store(true);
-        while (!stopped.load() && !agent->paused.load())
-            agent->caller_cv.wait();
-        // Reset the signal.
-        agent->signal_pause.store(false);
-    }
+    if (agent.pause_state.tick())
+        while (agent.pause_state.is_tok()) agent.caller_cv.wait();
 
-    agent->caller_m.unlock();
+    agent.caller_m.unlock();
 }
 
 void VMThread::check_pause() {
-    PauseAgent *agent = &this->pause_agent;
+    PauseAgent &agent = this->pause_agent;
     // Check if the signal is raised, do nothing if false.
-    if (!agent->signal_pause.load())
-        return;
+    if (!agent.pause_state.tok()) return;
     // Signal the pause requester that the thread is paused.
-    agent->paused.store(true);
     // Wake the pause requester thread.
-    agent->caller_cv.notify();
+    agent.caller_cv.notify();
 
     uint32 _; // The only error ERR_INTERRUPT is ignored since a paused thread cannot be waked up by VMThread::wake().
-    while (!agent->signal_resume.load()) block(_);
-    // Reset the pause state.
-    agent->paused.store(false);
+    while (!agent.resume_state.tok()) block(_);
 }
 
 void VMThread::resume() {
@@ -170,62 +181,31 @@ void VMThread::resume() {
     if (embedded.id() == os::Thread::current_thread_id())
         return;
 
-    // Early bird exit.
-    if (stopped.load()) return;
-
     PauseAgent &p_agent = this->pause_agent;
-
-    // Early bird exit.
-    if (!p_agent.paused.load()) return;
-
-    // One resume action at a time, and should not be happened simultaneously with a pause action.
+    // One request at a time, and should not be happened simultaneously with pause action.
     p_agent.caller_m.lock();
 
-    // If the stopped flag is set, then the resume operation should not be continued since it will be terminated anyway.
-    // NOTE: This line is placed behind agent.caller_m.lock() to ensure all pause requests are placed in either case:
-    // -
-    // Before the join (thread termination) operation, this operation will be continued and exit by the stopped check
-    // within the busy-wake.
-    // -
-    // After the join operation, this pause action will be cancelled.
-    if (!stopped.load()) {
-        // Signal the thread to resume.
-        p_agent.signal_resume.store(true);
-        // Wake the paused thread until it awakes if and only if it is not stopped.
-        BlockingAgent &b_agent = this->blocking_agent;
-        while (!stopped.load() && p_agent.paused.load()) {
-            b_agent.signal_wake.store(true);
-            b_agent.blocking_cv.notify();
-        }
-        // Reset the resume signal.
-        p_agent.signal_resume.store(false);
+    BlockingAgent &b_agent = this->blocking_agent;
+    if (p_agent.resume_state.tick()) {
+        b_agent.signal_wake.store(true);
+        while (p_agent.resume_state.is_tok()) b_agent.blocking_cv.notify();
     }
 
     p_agent.caller_m.unlock();
 }
 
 void VMThread::interrupt() {
+    // TODO: Need a new implementation.
     // A sleeping thread cannot interrupt itself, or a non-slept thread should not interrupt itself.
     VeilAssert(embedded.id() != os::Thread::current_thread_id(), "Attempt to wake the current thread itself.");
 
-    // Early bird exit.
-    if (stopped.load()) return;
-
-    PauseAgent &p_agent = this->pause_agent;
-    // Ensures the interrupting thread knows the current state of this thread.
-    p_agent.caller_m.lock();
-
-    if (!stopped.load()) {
-        // Signal the interrupt.
-        interrupted.store(true);
-        // An interrupt request is a no-blocking action, the requester who wants to wait until the current thread joins
-        // should call VMThread::join() after this method.
-        BlockingAgent &b_agent = this->blocking_agent;
-        b_agent.signal_wake.store(true);
-        b_agent.blocking_cv.notify();
-    }
-
-    p_agent.caller_m.unlock();
+    // Signal the interrupt.
+    interrupted.store(true);
+    // An interrupt request is a no-blocking action, the requester who wants to wait until the current thread joins
+    // should call VMThread::join() after this method.
+    BlockingAgent &agent = this->blocking_agent;
+    agent.signal_wake.store(true);
+    agent.blocking_cv.notify();
 }
 
 bool VMThread::check_interrupt() {
@@ -282,21 +262,20 @@ void Management::start(VMService &service) {
     thread_arena_m.lock();
     // TODO: Is that possible to store joined / idle thread in an array list?
     VMThread *current = iterator.next();
-    VMThread *found = nullptr;
-    while (current != nullptr && found == nullptr) {
-        // We would like to find an idle thread to start our new service.
-        if (current->idle.load()) // TODO: use compare exchange.
-            found = current;
+    bool started = false;
+    while (current != nullptr) {
+        if (current->start(service)) {
+            goto STARTED;
+        }
         current = iterator.next();
     }
 
     // If there are no available thread, allocate & construct a new one within the TArena<VMThread>.
-    if (found == nullptr) {
-        found = this->memory::TArena<VMThread>::allocate();
-        new(found) VMThread(*this);
-    }
+    current = this->memory::TArena<VMThread>::allocate();
+    new(current) VMThread(*this);
+    current->start(service);
 
-    found->start(service);
+    STARTED:
     thread_arena_m.unlock();
 }
 
@@ -305,6 +284,7 @@ void Management::pause_all() {
     thread_arena_m.lock();
     VMThread *current = iterator.next();
     while (current != nullptr) {
+        // TODO: pause of idle thread is fine, but this behavior is implicit.
         current->pause();
         current = iterator.next();
     }

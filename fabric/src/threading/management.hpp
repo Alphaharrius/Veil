@@ -30,6 +30,30 @@ namespace veil::threading {
 
     class VMThread;
 
+    struct LockFreeState {
+    public:
+        static const uint32 TICK = 0;
+        static const uint32 TOK = 1;
+        static const uint32 CLOSED = 2;
+
+        LockFreeState();
+
+        void open();
+
+        bool tick();
+
+        bool tok();
+
+        bool close();
+
+        bool is_tick();
+
+        bool is_tok();
+
+    private:
+        os::atomic_u32 flag;
+    };
+
     class VMService : public memory::HeapObject, public vm::HasName, public vm::Executable,
                       public vm::Constituent<VMThread> {
     public:
@@ -55,7 +79,7 @@ namespace veil::threading {
 
     private:
         os::ConditionVariable join_cv;
-        os::atomic_bool join_flag;
+        LockFreeState join_state;
 
         volatile bool completed;
     };
@@ -70,13 +94,10 @@ namespace veil::threading {
         };
 
         struct PauseAgent {
-            os::atomic_bool caller_flag; // TODO: Use this to ensure thread safety of state between caller & target.
+            LockFreeState pause_state;
+            LockFreeState resume_state;
             os::Mutex caller_m; // TODO: Use this for pause synchronization only.
             os::ConditionVariable caller_cv;
-
-            os::atomic_bool signal_pause;
-            os::atomic_bool paused;
-            os::atomic_bool signal_resume;
 
             PauseAgent();
         };
@@ -84,7 +105,7 @@ namespace veil::threading {
     public:
         explicit VMThread(Management &management);
 
-        void start(VMService &service);
+        bool start(VMService &service);
 
         void join();
 
@@ -99,7 +120,6 @@ namespace veil::threading {
 
     private:
         os::atomic_bool idle;
-        os::atomic_bool stopped;
 
         os::Thread embedded;
 
@@ -126,7 +146,7 @@ namespace veil::threading {
         friend void VMService::execute();
     };
 
-    class Management : public memory::HeapObject, public vm::Constituent<Runtime>, private memory::TArena<VMThread> {
+    class Management : public memory::HeapObject, public vm::Constituent<Runtime>, public memory::TArena<VMThread> {
     public:
         void start(VMService &service);
 
