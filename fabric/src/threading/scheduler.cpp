@@ -43,6 +43,7 @@ void Scheduler::start() {
         // If there are only one task left, fetch it and set current_task to nullptr.
         else if (current_task->get_next() == current_task) {
             selected = current_task;
+            // Setting this to nullptr signals the scheduler to pause on the next round.
             current_task = nullptr;
         }
 
