@@ -570,3 +570,7 @@ void ConditionVariable::notify_all() {
     this->associate.unlock();
 #   endif
 }
+
+CriticalSection::CriticalSection(Mutex &mutex) : mutex(&mutex) { mutex.lock(); }
+
+CriticalSection::~CriticalSection() { mutex->unlock(); }

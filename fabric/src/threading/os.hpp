@@ -62,6 +62,16 @@ namespace veil::os {
         friend class ConditionVariable;
     };
 
+    class CriticalSection : public memory::ValueObject {
+    public:
+        explicit CriticalSection(Mutex &mutex);
+
+        ~CriticalSection();
+
+    private:
+        Mutex *mutex;
+    };
+
     class ConditionVariable : public memory::ValueObject {
     public:
         ConditionVariable();
