@@ -32,13 +32,13 @@ Scheduler::Scheduler() : paused(true), current_task(nullptr) {
 void Scheduler::start() {
     ScheduledTask *selected;
     // Fetch a task to run.
-    FETCH: {
+    Fetch: {
         os::CriticalSection _(scheduler_m);
 
         if (terminated) goto TERMINATE;
 
         // If there are no task left to do, the scheduler thread will be paused to avoid occupying the CPU.
-        else if (current_task == nullptr) goto PAUSE;
+        else if (current_task == nullptr) goto Pause;
 
         // If there are only one task left, fetch it and set current_task to nullptr.
         else if (current_task->get_next() == current_task) {
@@ -59,13 +59,13 @@ void Scheduler::start() {
     selected->completed = true; // Set the task as completed.
     // After the completion of the task, we have to wake up the thread that owns the task.
     selected->scheduled_cv.notify();
-    goto FETCH;
+    goto Fetch;
 
-    PAUSE:
+    Pause:
     paused = true;
     pause_cv.wait();
     paused = false;
-    goto FETCH;
+    goto Fetch;
     TERMINATE: return;
 }
 
