@@ -22,32 +22,41 @@ using namespace veil::threading;
 
 Queuee::Queuee() : status(STAT_IDLE), reentrance_count(0), target(nullptr), exit_queue(false), queuee_notified(false) {}
 
-void Queuee::queue(Queue &queue) {
+bool Queuee::try_queue(Queue &queue) {
     // Check if the current queuee queues to on the same queue it have been queued, if so the current acquire can be
     // considered as a reentrance behavior, increment the reentrance count and exit the method. It is enforced that the
     // root client will assign the reentrance acquire operation to the queuee that have acquired the same target.
     if (this->status != STAT_IDLE && this->target == &queue) {
         this->reentrance_count++;
-        return;
+        return true;
     }
 
-    // Mark the target queuee.
-    this->target = &queue;
-
-    // Check if the queue has queuee, enters the spin process if there is.
-    if (queue.last_queuee.load() != nullptr)
-        // Spinning for MAX_SPIN_COUNT amount of time to see if the queue is available before using the full process of
-        // queue acquisition. This will save some CPU resources in a contested situation.
+    // Using atomic compare exchange to acquire the queue if it returns to empty state.
+    if (nullptr != queue.last_queuee.compare_exchange(nullptr, this))
         for (uint32 spin_count = 0; spin_count < config::mutex_spin_count; spin_count++) {
             // Using atomic compare exchange to acquire the queue if it returns to empty state within the spin period.
             if (nullptr == queue.last_queuee.compare_exchange(nullptr, this)) {
-                // We can skip all subsequent procedure in acquiring the queue, this prevents all forms of thread
-                // blocking which would be resource intensive.
+                // The queue is acquired.
                 goto Acquire;
             }
+            // Abandon the time slice assigned to this thread to other threads which they will have the chance to
+            // complete their task and release the queue as soon as possible, this will increase the chance of
+            // successful spin.
+            os::Thread::static_sleep(0);
         }
 
-    {
+    else goto Acquire;
+
+    return false;
+
+    Acquire:
+    this->target = &queue; // Mark the target queuee.
+    return true;
+}
+
+void Queuee::queue(Queue &queue) {
+    if (!try_queue(queue)) {
+        this->target = &queue; // Mark the target queuee.
         // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
         // competing monitor will queue behind the top queuee.
         Queuee *last_queuee = queue.last_queuee.exchange(this);
@@ -68,7 +77,6 @@ void Queuee::queue(Queue &queue) {
         }
     }
 
-    Acquire:
     // At this stage this queuee have fully acquired the queue object.
     this->status = STAT_ACQUIRE;
 }

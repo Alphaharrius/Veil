@@ -55,10 +55,16 @@ namespace veil::threading {
 
         Queuee();
 
+        /// Attempt to queue in the \p queue by using spin locking, this can be used as a light weight attempt to
+        /// achieve the effect of \c Queue::queue()
+        /// \param queue The queue to be queued in.
+        /// \return \c true if the attempt is successful; \c false if else due to others have been queued there.
+        bool try_queue(Queue &queue);
+
         /// Wait in the \p queue if it is occupied, \c Queuee::MAX_SPIN_COUNT of spin locking will be used before the
         /// calling thread enters blocking state. Once the thread is blocked, this method will not return until the
         /// prior \c Queuee to invoke \c Queuee::exit and pass the exclusive access right to the current thread.
-        /// \param queue The queue to be waited.
+        /// \param queue The queue to be queued in.
         void queue(Queue &queue);
 
         /// Leaving the state of exclusive access to the \p queue and notify the subsequent \c Queuee to leave thread
@@ -68,7 +74,7 @@ namespace veil::threading {
 
     private:
         /// The status of this queuee, can be either \c Queuee::STAT_IDLE , \c Queuee::STAT_QUEUE and
-        /// \c Queuee::STAT_ACQUIRE.
+        /// \c Queuee::STAT_ACQUIRE
         /// <br><br>
         /// The time position where these flags will be set: <ul>
         ///     <li> \c STAT_IDLE : The default value, also set when the \c Queuee completed the access cycle by
