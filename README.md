@@ -33,6 +33,7 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
            that are not supposed to be used or exposed outside of class scope.
 - Variables: ```snake_case``` and better to be verbose with at least one ```_``` to avoid collision with comments.
 - Attributes: ```snake_case``` and better to be verbose with at least one ```_``` to avoid collision with comments.
+- Constants: ```ALL_CAPS``` and use keyword ```const``` but not macros.
 - Structs: ```CamelCase``` as a multi-part wrapper; ```snake_case_t``` as a primitive capsule.
 - Macros: ```CamelCase```
 - Labels: ```CamelCase```
