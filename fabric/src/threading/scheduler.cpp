@@ -44,9 +44,9 @@ void Scheduler::start() {
         if (termination_requested) goto Terminate;
 
             // If there are no task left to do, the scheduler thread will be paused to avoid occupying the CPU.
-            // NOTE: current_task == nullptr is count as explicit information to signify the scheduler is now free, since
-            // the scheduler loop is protected by the mutex scheduler_action_m, no new task will be added until this cycle
-            // ends, thus we can safely head to the pause state.
+            // NOTE: current_task == nullptr is count as explicit information to signify the scheduler is now free,
+            // since the scheduler loop is protected by the mutex scheduler_action_m, no new task will be added until
+            // this cycle ends, thus we can safely head to the pause state.
         else if (current_task == nullptr) goto Pause;
 
             // If there are only one task left, fetch it and set current_task to nullptr.
