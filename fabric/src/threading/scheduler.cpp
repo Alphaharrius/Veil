@@ -2,7 +2,7 @@
 
 using namespace veil::threading;
 
-ScheduledTask::ScheduledTask() : prev(this), next(this), completed(false) {}
+ScheduledTask::ScheduledTask() : prev(this), next(this), signal_completed(false) {}
 
 void ScheduledTask::wait_for_completion() {
     // Wait until the task is being completed by the scheduler.
@@ -37,25 +37,26 @@ Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr) {
 void Scheduler::start() {
     ScheduledTask *selected;
     // Fetch a task to run.
-    Fetch: {
+    Fetch:
+    {
         os::CriticalSection _(scheduler_action_m);
 
         if (termination_requested) goto Terminate;
 
-        // If there are no task left to do, the scheduler thread will be paused to avoid occupying the CPU.
-        // NOTE: current_task == nullptr is count as explicit information to signify the scheduler is now free, since
-        // the scheduler loop is protected by the mutex scheduler_action_m, no new task will be added until this cycle
-        // ends, thus we can safely head to the pause state.
+            // If there are no task left to do, the scheduler thread will be paused to avoid occupying the CPU.
+            // NOTE: current_task == nullptr is count as explicit information to signify the scheduler is now free, since
+            // the scheduler loop is protected by the mutex scheduler_action_m, no new task will be added until this cycle
+            // ends, thus we can safely head to the pause state.
         else if (current_task == nullptr) goto Pause;
 
-        // If there are only one task left, fetch it and set current_task to nullptr.
+            // If there are only one task left, fetch it and set current_task to nullptr.
         else if (current_task->get_next() == current_task) {
             selected = current_task;
             // Setting this to nullptr signals the scheduler to pause on the next round.
             current_task = nullptr;
         }
 
-        // Fetch the current task and set the next task as the current task.
+            // Fetch the current task and set the next task as the current task.
         else {
             selected = current_task;
             current_task = current_task->get_next();
@@ -64,7 +65,7 @@ void Scheduler::start() {
 
     selected->run();
     selected->disconnect(); // Disconnect the task from the circle task list as it is completed.
-    selected->completed = true; // Set the task as completed.
+    selected->signal_completed = true; // Set the task as completed.
     // After the completion of the task, we have to wake up the thread that owns the task.
     while (!selected->slept_thread_awake) {
         selected->request_thread_cv.notify();
@@ -82,7 +83,8 @@ void Scheduler::start() {
     // interrupt all existing threads and wait for all to terminate. A sweet spot is here due to the inactivity of the
     // scheduler loop, there will be no new threads spawning, pausing or terminating at this point, thus this can be
     // handled effortlessly (should be).
-    Terminate: finalization_on_termination();
+    Terminate:
+    finalization_on_termination();
 }
 
 void Scheduler::finalization_on_termination() {
@@ -90,34 +92,23 @@ void Scheduler::finalization_on_termination() {
 }
 
 void Scheduler::add_task(ScheduledTask &task) {
-    {
-        // Scheduler state specific task is protected by the mutex scheduler_action_m. The following process is to:
-        // 1. Connect the new task to the left side of the current task or the 'end' of the circle list according to the
-        //    direction of process flow (from left to right); if there are no task in the circle list place the new task
-        //    in the position of the current task.
-        // 2. If the scheduler is in pause state, attempt to resume it to start processing new tasks.
-        os::CriticalSection _(scheduler_action_m);
+    // Scheduler state specific task is protected by the mutex scheduler_action_m.
+    // The following process is to:
+    // 1. Connect the new task to the left side of the current task or the 'end' of the circle list according to the
+    //    direction of process flow (from left to right); if there are no task in the circle list place the new task
+    //    in the position of the current task.
+    // 2. If the scheduler is in pause state, attempt to resume it to start processing new tasks.
+    os::CriticalSection _(scheduler_action_m);
 
-        // Connect the new task to the circle task list.
-        if (this->current_task == nullptr) current_task = &task;
-        else current_task->connect(task);
+    // Connect the new task to the circle task list.
+    if (this->current_task == nullptr) current_task = &task;
+    else current_task->connect(task);
 
-        // Just in case if the scheduler is slept, attempt to wake it up.
-        while (process_cycle_paused) {
-            process_cycle_pause_cv.notify();
-            // Abandon the time slice of the underlying thread to other OS threads, especially the thread running the
-            // scheduler, to run.
-            os::Thread::static_sleep(0);
-        }
+    // Just in case if the scheduler is slept, attempt to wake it up.
+    while (process_cycle_paused) {
+        process_cycle_pause_cv.notify();
+        // Abandon the time slice of the underlying thread to other OS threads, especially the thread running the
+        // scheduler, to run.
+        os::Thread::static_sleep(0);
     }
-
-    // The followings are local to the task thus not require to be within the critical section. If it is within the
-    // critical section, it will occupy the mutex scheduler_action_m and suspends all processes including the scheduler
-    // to run before this thread is signaled to wake, yet the wake signal must be placed be the scheduler and is blocked
-    // thus lead to a deadlock.
-
-    // Wait until the task is being completed by the scheduler.
-    while (task.completed) task.request_thread_cv.wait();
-    // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
-    task.slept_thread_awake = true;
 }

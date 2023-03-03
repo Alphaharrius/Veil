@@ -71,7 +71,7 @@ namespace veil::threading {
         ScheduledTask *prev;
         ScheduledTask *next;
         os::ConditionVariable request_thread_cv;
-        volatile bool completed;
+        volatile bool signal_completed;
         volatile bool slept_thread_awake;
 
         friend void Scheduler::start();
