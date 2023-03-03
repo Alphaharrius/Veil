@@ -4,7 +4,12 @@ using namespace veil::threading;
 
 ScheduledTask::ScheduledTask() : prev(this), next(this), completed(false) {}
 
-void ScheduledTask::wait_for_completion() { while (!completed) request_thread_cv.wait(); }
+void ScheduledTask::wait_for_completion() {
+    // Wait until the task is being completed by the scheduler.
+    while (this->signal_completed) this->request_thread_cv.wait();
+    // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
+    this->slept_thread_awake = true;
+}
 
 void ScheduledTask::connect(ScheduledTask &task) {
     // Connect the previous task to the new task.
