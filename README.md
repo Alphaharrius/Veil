@@ -25,6 +25,17 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
 
 ![image](https://user-images.githubusercontent.com/47113671/218408370-62ccc500-b42c-4ad9-a5a5-44ebfab9e195.png)
 
+### Naming conventions
+
+- Class: ```CamelCase```
+- Methods: ```snake_case```, with single words for public action methods; multi-word for private methods or methods
+           that are not supposed to be used or exposed outside of class scope.
+- Variables: ```snake_case``` and better to be verbose with at least one ```_``` to avoid collision with comments.
+- Attributes: ```snake_case``` and better to be verbose with at least one ```_``` to avoid collision with comments.
+- Structs: ```CamelCase``` as a multi-part wrapper; ```snake_case``` as a primitive capsule.
+- Macros: ```CamelCase```
+- Labels: ```CamelCase```
+
 ### Code structure
 
 - Integer like types in the code should use the ```typedef``` defined types in ```fabric/src/typedefs.hpp```.
