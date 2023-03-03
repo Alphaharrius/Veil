@@ -23,7 +23,7 @@ using namespace veil::memory;
 
 Algorithm::Algorithm(std::string &name) : vm::HasName(name) {}
 
-Allocator::Allocator(Management &management) : vm::Constituent<Management>(management) {}
+Allocator::Allocator(Management &management) : vm::HasRoot<Management>(management) {}
 
 Allocator *Management::create_allocator(vm::Request &request) {
     return this->algorithm->create_allocator(*this, request);
@@ -60,7 +60,7 @@ Management *Management::new_instance(Runtime &runtime, MemoryInitRequest &reques
 }
 
 Management::Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size) :
-        vm::Constituent<Runtime>(runtime),
+        vm::HasRoot<Runtime>(runtime),
         MAX_HEAP_SIZE(max_heap_size),
         algorithm(algorithm),
         mapped_heap_size(0),

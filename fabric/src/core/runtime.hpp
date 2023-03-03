@@ -26,7 +26,7 @@
 namespace veil {
 
     class Runtime : public memory::ValueObject,
-                    public vm::Composite<memory::Management>, public vm::Composite<threading::Management> {
+                    public vm::HasMember<memory::Management>, public vm::HasMember<threading::Management> {
     public:
         Runtime();
     };

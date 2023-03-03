@@ -64,69 +64,69 @@ namespace veil::vm {
     };
 
     template<class R>
-    class Constituent {
+    class HasRoot {
     public:
-        explicit Constituent(R &root) : root(&root) {};
+        explicit HasRoot(R &root) : root(&root) {};
 
-        Constituent() : root(nullptr) {};
+        HasRoot() : root(nullptr) {};
 
         void bind(R &root);
 
         void unbind();
 
-        R *get_root();
+        R *get();
 
     protected:
         R *root;
     };
 
     template<class R>
-    void Constituent<R>::bind(R &r) {
+    void HasRoot<R>::bind(R &r) {
         this->root = &r;
     }
 
     template<class R>
-    void Constituent<R>::unbind() {
+    void HasRoot<R>::unbind() {
         this->root = nullptr;
     }
 
     template<class P>
-    P *Constituent<P>::get_root() {
+    P *HasRoot<P>::get() {
         VeilAssert(this->root != nullptr, "Root not bind.");
         return this->root;
     }
 
-    template<class C>
-    class Composite {
+    template<class M>
+    class HasMember {
     public:
-        Composite() : composition(nullptr) {}
+        HasMember() : member(nullptr) {}
 
-        explicit Composite(C &composition) : composition(composition) {}
+        explicit HasMember(M &member) : member(member) {}
 
-        void bind(C &composition);
+        void bind(M &m);
 
         void unbind();
 
-        C *get_composition();
+        M *get();
 
     private:
-        C *composition;
+        M *member;
     };
 
-    template<class C>
-    C *Composite<C>::get_composition() {
-        VeilAssert(this->composition != nullptr, "Composition not bind.");
-        return this->composition;
+    template<class M>
+    M *HasMember<M>::get() {
+        VeilAssert(this->member != nullptr, "Member not bind.");
+        return this->member;
     }
 
-    template<class C>
-    void Composite<C>::bind(C &c) {
-        this->composition = &c;
+    template<class M>
+    void HasMember<M>::bind(M &m) {
+        this->member = &m;
     }
 
-    template<class C>
-    void Composite<C>::unbind() {
-        this->composition = nullptr;
+    template<class M>
+    void HasMember<M>::unbind() {
+        this->member = nullptr;
     }
 
     class Executable {
