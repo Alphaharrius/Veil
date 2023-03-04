@@ -18,8 +18,15 @@
 
 #include "src/memory/global.hpp"
 #include "src/threading/os.hpp"
+#include "src/threading/handshake.hpp"
+#include "src/vm/structures.hpp"
 
 namespace veil::threading {
+    /// The threading management of this runtime is designed to be single-point manageable, except of having all threads
+    /// manages their own life cycle after spawning (pause/resume/termination), it will all be handled by the scheduler
+    /// in a single-threaded task loop. Each task (sub classes of <code>ScheduledTask</code>) will encapsulate the
+    /// requests to control or signal the thread's lifecycle, thus maximal thread-safety during these events are tightly
+    /// guaranteed.
     class Scheduler;
 
     class ScheduledTask;
@@ -28,10 +35,17 @@ namespace veil::threading {
 
     class VMService;
 
-    class Scheduler : memory::TArena<threading::VMThread> {
+    class Scheduler : public memory::ValueObject, private memory::TArena<threading::VMThread> {
     public:
         Scheduler();
 
+        /// \brief Start the task loop of the scheduler.
+        /// This method will kick start the task loop of the scheduler, which handles the spawning of a new thread, the
+        /// termination of a job-completed thread, pause and resume of a running thread. Since all events are happening
+        /// in a single threaded loop, synchronization of thread events are guaranteed.
+        /// \attention This method will not return until the scheduler is terminated, thus we should choose carefully
+        /// which thread will host the scheduler itself. To kept the scheduler manageable, it is best to be hosted on
+        /// the main thread, which is not part of the scheduler managed threads.
         void start();
 
         void add_task(ScheduledTask &task);
@@ -86,14 +100,48 @@ namespace veil::threading {
         ScheduledTask *prev;
         ScheduledTask *next;
         os::ConditionVariable request_thread_cv;
-        volatile bool signal_completed;
-        volatile bool slept_thread_awake;
+        bool volatile signal_completed;
+        bool volatile slept_thread_awake;
 
         friend void Scheduler::start();
         friend void Scheduler::add_task(ScheduledTask &task);
     };
 
-    class VMThread : memory::ArenaObject {
+    class VMThread : public memory::ArenaObject, public vm::HasRoot<Scheduler>, public vm::HasMember<VMService> {
+    public:
+        static const uint64 NULL_SERVICE_IDENTIFIER = 0;
+
+        VMThread();
+
+        void host(VMService &service);
+
+        bool sleep(uint32 milliseconds);
+
+    private:
+        bool volatile idle;
+        uint64 service_identifier;
+        os::Thread embedded_os_thread;
+
+        os::ConditionVariable self_blocking_cv;
+        HandShake pause_handshake;
+        HandShake resume_handshake;
+        os::atomic_bool_t signaled_interrupt;
+
+        bool volatile thread_join_negotiated;
+        os::ConditionVariable thread_join_blocking_cv;
+
+        bool check_if_interrupted();
+
+        void pause_if_requested();
+    };
+
+    class VMService : public vm::HasName, public vm::Executable, public vm::HasRoot<VMThread> {
+    public:
+        void execute() override;
+
+        uint64 get_unique_identifier();
+
+        virtual void run_task() = 0;
     };
 }
 
