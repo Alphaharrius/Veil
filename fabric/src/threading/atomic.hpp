@@ -100,7 +100,7 @@ namespace veil::os {
     };
 
     template<typename T>
-    atomic_pointer_t<T>::atomic_pointer_t(T *initial) : atomic_u64_t(reinterpret_cast<uint64>(initial)) {}
+    atomic_pointer_t<T>::atomic_pointer_t(T *initial) : embedded(reinterpret_cast<uint64>(initial)) {}
 
     template<typename T>
     T *atomic_pointer_t<T>::load() const {
