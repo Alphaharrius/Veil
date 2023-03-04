@@ -21,12 +21,11 @@
 #include "src/core/runtime.forward.hpp"
 #include "src/memory/global.hpp"
 #include "src/memory/management.hpp"
-#include "src/threading/management.hpp"
 
 namespace veil {
 
     class Runtime : public memory::ValueObject,
-                    public vm::HasMember<memory::Management>, public vm::HasMember<threading::Management> {
+                    public vm::HasMember<memory::Management> {
     public:
         Runtime();
     };
