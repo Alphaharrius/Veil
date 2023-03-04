@@ -53,3 +53,8 @@ add_executable(
         threading_management_test
         fabric/src/threading/tests/management_test.cpp
         ${fabric_src})
+
+add_executable(
+        scheduler_test
+        fabric/src/threading/tests/scheduler_test.cpp
+        ${fabric_src})
