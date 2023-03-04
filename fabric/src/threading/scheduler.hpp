@@ -50,6 +50,8 @@ namespace veil::threading {
 
         void add_task(ScheduledTask &task);
 
+        void notify_added_task();
+
     private:
         /// This flag determines whether the scheduler <b>will be</b> terminated, if this is set to <code>true</code>
         /// then the scheduler will be terminated at the next process cycle and <code>Scheduler::start()</code> will
@@ -84,7 +86,7 @@ namespace veil::threading {
     public:
         ScheduledTask();
 
-        void wait_for_completion();
+        void wait_for_completion(bool to_wait);
 
         void connect(ScheduledTask &task);
 
@@ -100,6 +102,7 @@ namespace veil::threading {
         ScheduledTask *prev;
         ScheduledTask *next;
         os::ConditionVariable request_thread_cv;
+        bool volatile request_thread_waiting;
         bool volatile signal_completed;
         bool volatile slept_thread_awake;
 

@@ -18,9 +18,11 @@
 
 using namespace veil::threading;
 
-ScheduledTask::ScheduledTask() : prev(this), next(this), signal_completed(false) {}
+ScheduledTask::ScheduledTask() : request_thread_waiting(true), prev(this), next(this), signal_completed(false),
+                                 slept_thread_awake(false) {}
 
-void ScheduledTask::wait_for_completion() {
+void ScheduledTask::wait_for_completion(bool to_wait) {
+    this->request_thread_waiting = to_wait;
     // Wait until the task is being completed by the scheduler.
     while (this->signal_completed) this->request_thread_cv.wait();
     // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
@@ -47,7 +49,7 @@ ScheduledTask *ScheduledTask::get_next() { return next; }
 
 ScheduledTask *ScheduledTask::get_prev() { return prev; }
 
-Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr) {
+Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false) {
 }
 
 void Scheduler::start() {
@@ -82,8 +84,9 @@ void Scheduler::start() {
     selected->run();
     selected->disconnect(); // Disconnect the task from the circle task list as it is completed.
     selected->signal_completed = true; // Set the task as completed.
-    // After the completion of the task, we have to wake up the thread that owns the task.
-    while (!selected->slept_thread_awake) {
+    // After the completion of the task, we have to wake up the thread that owns the task if the request thread is
+    // blocked on the request_thread_cv.
+    while (selected->request_thread_waiting && !selected->slept_thread_awake) {
         selected->request_thread_cv.notify();
         os::Thread::static_sleep(0);
     }
@@ -119,7 +122,9 @@ void Scheduler::add_task(ScheduledTask &task) {
     // Connect the new task to the circle task list.
     if (this->current_task == nullptr) current_task = &task;
     else current_task->connect(task);
+}
 
+void Scheduler::notify_added_task() {
     // Just in case if the scheduler is slept, attempt to wake it up.
     while (process_cycle_paused) {
         process_cycle_pause_cv.notify();
