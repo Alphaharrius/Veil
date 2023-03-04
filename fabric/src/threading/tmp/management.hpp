@@ -51,11 +51,11 @@ namespace veil::threading {
         bool is_tok();
 
     private:
-        os::atomic_u32 flag;
+        os::atomic_u32_t flag;
     };
 
     class VMService : public memory::HeapObject, public vm::HasName, public vm::Executable,
-                      public vm::Constituent<VMThread> {
+                      public vm::HasRoot<VMThread> {
     public:
         explicit VMService(std::string &name);
 
@@ -84,11 +84,11 @@ namespace veil::threading {
         volatile bool completed;
     };
 
-    class VMThread : public memory::ArenaObject, public vm::Constituent<Management>, public vm::Composite<VMService> {
-    private:
+    class VMThread : public memory::ArenaObject, public vm::HasRoot<Management>, public vm::HasMember<VMService> {
+    public:
         struct BlockingAgent {
             os::ConditionVariable blocking_cv;
-            os::atomic_bool signal_wake;
+            os::atomic_bool_t signal_wake;
 
             BlockingAgent();
         };
@@ -102,7 +102,6 @@ namespace veil::threading {
             PauseAgent();
         };
 
-    public:
         explicit VMThread(Management &management);
 
         bool start(VMService &service);
@@ -119,22 +118,30 @@ namespace veil::threading {
         void check_pause();
 
     private:
-        os::atomic_bool idle;
+        os::atomic_bool_t idle;
 
         os::Thread embedded;
 
         BlockingAgent blocking_agent;
         PauseAgent pause_agent;
 
-        os::atomic_bool interrupted;
+        os::atomic_bool_t interrupted;
 
         void interrupt();
 
+        void signal_pause();
+
+        void wait_pause();
+
         void pause();
+
+        void signal_resume();
+
+        void wait_resume();
 
         void resume();
 
-        void reset();
+        void finalize();
 
         friend class Management;
         friend void VMService::sleep(uint32 milliseconds, uint32 &error);
@@ -146,7 +153,7 @@ namespace veil::threading {
         friend void VMService::execute();
     };
 
-    class Management : public memory::HeapObject, public vm::Constituent<Runtime>, public memory::TArena<VMThread> {
+    class Management : public memory::HeapObject, public vm::HasRoot<Runtime>, private memory::TArena<VMThread> {
     public:
         void start(VMService &service);
 

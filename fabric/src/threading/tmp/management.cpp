@@ -50,29 +50,30 @@ void VMService::execute() {
         join_cv.notify();
 
     // The service is finished by now, start cleaning up.
-    auto *thread = this->vm::Constituent<VMThread>::get_root();
+    auto *thread = this->vm::HasRoot<VMThread>::get();
 
     // Unlink the thread and the service.
     this->unbind();
-    thread->vm::Composite<VMService>::unbind();
+    thread->vm::HasMember<VMService>::unbind();
 
-    thread->reset();
+    thread->finalize();
 }
 
 void VMService::sleep(uint32 milliseconds, uint32 &error) {
-    this->vm::Constituent<VMThread>::get_root()->sleep(milliseconds, error);
+    this->vm::HasRoot<VMThread>::get()->sleep(milliseconds, error);
 }
 
 void VMService::interrupt() {
-    this->vm::Constituent<VMThread>::get_root()->interrupt();
+    this->vm::HasRoot<VMThread>::get()->interrupt();
 }
 
 void VMService::join() {
-    // TODO: Use os::Thread::static_sleep() in this loop.
     // If the service is not completed, it can be joined.
     while (!completed &&
            // Tick the join_state so that this service knows there are someone request to join with it.
-           !join_state.tick()) {}
+           !join_state.tick()) {
+        os::Thread::static_sleep(0);
+    }
 
     // Wait until the service is completed.
     while (!completed) join_cv.wait();
@@ -80,19 +81,19 @@ void VMService::join() {
 }
 
 void VMService::pause() {
-    this->vm::Constituent<VMThread>::get_root()->pause();
+    this->vm::HasRoot<VMThread>::get()->pause();
 }
 
 void VMService::resume() {
-    this->vm::Constituent<VMThread>::get_root()->resume();
+    this->vm::HasRoot<VMThread>::get()->resume();
 }
 
 bool VMService::check_interrupt() {
-    return this->vm::Constituent<VMThread>::get_root()->check_interrupt();
+    return this->vm::HasRoot<VMThread>::get()->check_interrupt();
 }
 
 void VMService::check_pause() {
-    this->vm::Constituent<VMThread>::get_root()->check_pause();
+    this->vm::HasRoot<VMThread>::get()->check_pause();
 }
 
 VMThread::BlockingAgent::BlockingAgent() : signal_wake(false) {}
@@ -100,12 +101,12 @@ VMThread::BlockingAgent::BlockingAgent() : signal_wake(false) {}
 VMThread::PauseAgent::PauseAgent() = default;
 
 VMThread::VMThread(Management &management) :
-        vm::Constituent<Management>(management), idle(true), interrupted(false) {}
+        vm::HasRoot<Management>(management), idle(true), interrupted(false) {}
 
 bool VMThread::start(VMService &service) {
     if (!idle.exchange(false)) return false;
 
-    this->vm::Composite<VMService>::bind(service);
+    this->vm::HasMember<VMService>::bind(service);
     service.bind(*this);
     PauseAgent &agent = this->pause_agent;
     // Open the states for pause so that pause request can be placed.
@@ -121,7 +122,7 @@ void VMThread::join() {
     embedded.join();
 }
 
-void VMThread::reset() {
+void VMThread::finalize() {
     // Performing final clean up.
     BlockingAgent &b_agent = this->blocking_agent;
     PauseAgent &p_agent = this->pause_agent;
@@ -148,9 +149,29 @@ void VMThread::reset() {
     idle.store(true);
 }
 
-void VMThread::pause() { // TODO: Pause action should have bool return to indicate if its the first call.
+void VMThread::signal_pause() {
     // Pause should be requested by another thread.
-    if (embedded.id() == os::Thread::current_thread_id())
+    if (embedded.id() == os::Thread::current_thread_id() || idle.load())
+        return;
+
+    // This call is
+    this->pause_agent.pause_state.tick();
+}
+
+void VMThread::wait_pause() {
+    // Pause should be requested by another thread.
+    if (embedded.id() == os::Thread::current_thread_id() || idle.load())
+        return;
+
+    PauseAgent &agent = this->pause_agent;
+    agent.caller_m.lock();
+    while (agent.pause_state.is_tok()) agent.caller_cv.wait();
+    agent.caller_m.unlock();
+}
+
+void VMThread::pause() {
+    // Pause should be requested by another thread.
+    if (embedded.id() == os::Thread::current_thread_id() || idle.load())
         return;
 
     PauseAgent &agent = this->pause_agent;
@@ -160,7 +181,6 @@ void VMThread::pause() { // TODO: Pause action should have bool return to indica
     // One request at a time, and should not be happened simultaneously with resume action.
     agent.caller_m.lock();
 
-    // TODO: Add some return to indicate whether the thread is idle or there is another ongoing pause.
     if (agent.pause_state.tick())
         while (agent.pause_state.is_tok()) agent.caller_cv.wait();
 
@@ -179,9 +199,17 @@ void VMThread::check_pause() {
     while (!agent.resume_state.tok()) block(_);
 }
 
+void VMThread::signal_resume() {
+    // Resume should be requested by another thread.
+    if (embedded.id() == os::Thread::current_thread_id() || idle.load())
+        return;
+
+//    this->pause_agent.ca
+}
+
 void VMThread::resume() {
     // Resume should be requested by another thread.
-    if (embedded.id() == os::Thread::current_thread_id())
+    if (embedded.id() == os::Thread::current_thread_id() || idle.load())
         return;
 
     PauseAgent &p_agent = this->pause_agent;
@@ -213,7 +241,7 @@ void VMThread::interrupt() {
 }
 
 bool VMThread::check_interrupt() {
-    // Since interrupt is an end-of-life request for the thread, this flag will not be reset here.
+    // Since interrupt is an end-of-life request for the thread, this flag will not be finalize here.
     return interrupted.load();
 }
 
@@ -284,13 +312,18 @@ void Management::start(VMService &service) {
 }
 
 void Management::pause_all() {
-    memory::TArenaIterator<VMThread> iterator(*this);
+    memory::TArenaIterator<VMThread> signal_iterator(*this);
+    memory::TArenaIterator<VMThread> wait_iterator(*this);
     thread_arena_m.lock();
-    VMThread *current = iterator.next();
+    VMThread *current = signal_iterator.next();
     while (current != nullptr) {
-        // TODO: pause of idle thread is fine, but this behavior is implicit.
-        current->pause();
-        current = iterator.next();
+        current->signal_pause();
+        current = signal_iterator.next();
+    }
+    current = wait_iterator.next();
+    while (current != nullptr) {
+        current->wait_pause();
+        current = wait_iterator.next();
     }
     thread_arena_m.unlock();
 }
