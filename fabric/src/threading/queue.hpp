@@ -34,7 +34,7 @@ namespace veil::threading {
     private:
         /// Atomic pointer caches the last \c Queuee waited in the queue, this attribute will be exchanged atomically to
         /// ensure only one \c Queuee can be queued after another \c Queuee.
-        os::atomic_ptr<Queuee> last_queuee =  os::atomic_ptr<Queuee>(nullptr);
+        os::atomic_pointer_t<Queuee> last_queuee =  os::atomic_pointer_t<Queuee>(nullptr);
 
         friend class Queuee;
     };

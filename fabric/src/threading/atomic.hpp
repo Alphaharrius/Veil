@@ -20,9 +20,9 @@
 
 namespace veil::os {
 
-    struct atomic_u32 {
+    struct atomic_u32_t {
     public:
-        explicit atomic_u32(uint32 initial);
+        explicit atomic_u32_t(uint32 initial);
 
         [[nodiscard]] uint32 load() const;
 
@@ -44,9 +44,9 @@ namespace veil::os {
         uint32 embedded;
     };
 
-    struct atomic_u64 {
+    struct atomic_u64_t {
     public:
-        explicit atomic_u64(uint64 initial);
+        explicit atomic_u64_t(uint64 initial);
 
         [[nodiscard]] uint64 load() const;
 
@@ -68,9 +68,9 @@ namespace veil::os {
         volatile uint64 embedded;
     };
 
-    struct atomic_bool {
+    struct atomic_bool_t {
     public:
-        explicit atomic_bool(bool initial);
+        explicit atomic_bool_t(bool initial);
 
         [[nodiscard]] bool load() const;
 
@@ -79,13 +79,13 @@ namespace veil::os {
         [[nodiscard]] bool exchange(bool value) const;
 
     private:
-        atomic_u32 embedded;
+        atomic_u32_t embedded;
     };
 
     template<typename T>
-    struct atomic_ptr {
+    struct atomic_pointer_t {
     public:
-        explicit atomic_ptr(T *initial);
+        explicit atomic_pointer_t(T *initial);
 
         [[nodiscard]] T *load() const;
 
@@ -96,29 +96,29 @@ namespace veil::os {
         [[nodiscard]] T *compare_exchange(T *compare, T *value) const;
 
     private:
-        atomic_u64 embedded;
+        atomic_u64_t embedded;
     };
 
     template<typename T>
-    atomic_ptr<T>::atomic_ptr(T *initial) : embedded(reinterpret_cast<uint64>(initial)) {}
+    atomic_pointer_t<T>::atomic_pointer_t(T *initial) : atomic_u64_t(reinterpret_cast<uint64>(initial)) {}
 
     template<typename T>
-    T *atomic_ptr<T>::load() const {
+    T *atomic_pointer_t<T>::load() const {
         return reinterpret_cast<T *>(embedded.load());
     }
 
     template<typename T>
-    void atomic_ptr<T>::store(T *value) const {
+    void atomic_pointer_t<T>::store(T *value) const {
         embedded.store(reinterpret_cast<uint64>(value));
     }
 
     template<typename T>
-    T *atomic_ptr<T>::exchange(T *value) const {
+    T *atomic_pointer_t<T>::exchange(T *value) const {
         return reinterpret_cast<T *>(embedded.exchange(reinterpret_cast<uint64>(value)));
     }
 
     template<typename T>
-    T *atomic_ptr<T>::compare_exchange(T *compare, T *value) const {
+    T *atomic_pointer_t<T>::compare_exchange(T *compare, T *value) const {
         return reinterpret_cast<T *>(
                 embedded.compare_exchange(reinterpret_cast<uint64>(compare), reinterpret_cast<uint64>(value)));
     }

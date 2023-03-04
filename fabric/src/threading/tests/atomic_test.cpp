@@ -15,7 +15,7 @@ int main() {
     std::cout << "Initial address: 0x" << std::hex << reinterpret_cast<uint64>(obj) << std::endl;
     std::cout << "Expected: 0x" << std::hex << reinterpret_cast<uint64>(obj) << std::endl << std::endl;
 
-    atomic_ptr<Object> a_ptr(obj);
+    atomic_pointer_t<Object> a_ptr(obj);
 
     std::cout << "Address loaded: 0x" << std::hex << reinterpret_cast<uint64>(a_ptr.load()) << std::endl;
     std::cout << "Expected: 0x" << std::hex << reinterpret_cast<uint64>(obj) << std::endl << std::endl;

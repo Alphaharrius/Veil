@@ -263,7 +263,7 @@ namespace veil::memory {
 
     private:
         // TODO: Add documentations.
-        os::atomic_u64 mapped_heap_size;
+        os::atomic_u64_t mapped_heap_size;
 
         // TODO: Add documentations.
         Management(Runtime &runtime, Algorithm *algorithm, uint64 max_heap_size);

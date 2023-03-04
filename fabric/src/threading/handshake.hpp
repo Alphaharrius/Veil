@@ -33,7 +33,7 @@ namespace veil::threading {
         bool tok();
 
     private:
-        os::atomic_u32 internal_state;
+        os::atomic_u32_t internal_state;
     };
 
 }
