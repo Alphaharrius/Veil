@@ -58,3 +58,8 @@ add_executable(
         scheduler_test
         fabric/src/threading/tests/scheduler_test.cpp
         ${fabric_src})
+
+add_executable(
+        jit_test
+        jit_virtual_test.cpp
+)
