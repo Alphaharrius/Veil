@@ -42,6 +42,8 @@ namespace veil {
 
     void assertion_error(std::string reason, LineInfo line_info);
 
+    void print_callstack_trace();
+
 }
 
 #define VeilGetLineInfo veil::LineInfo(__FILE__, __func__, __LINE__)
