@@ -50,8 +50,10 @@ namespace veil {
 
 #if defined(VEIL_ENABLE_DEBUG)
 #define VeilAssert(expression, message) { if (!(expression)) veil::assertion_error(message, VeilGetLineInfo); }
+#define VeilPrintCallstackTrace() { veil::print_callstack_trace(); }
 #else
 #define VeilAssert(expression, message) {}
+#define VeilPrintCallstackTrace() {}
 #endif
 
 #endif //VEIL_FABRIC_SRC_VM_DIAGNOSTICS_HPP
