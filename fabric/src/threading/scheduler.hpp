@@ -86,15 +86,16 @@ namespace veil::threading {
     public:
         ScheduledTask();
 
-        void wait_for_completion(bool to_wait);
+        ~ScheduledTask();
 
-        void connect(ScheduledTask &task);
-
-        void disconnect();
-
-        ScheduledTask *get_next();
-
-        ScheduledTask *get_prev();
+        /// \brief Wait until the task is being processed by the scheduler.
+        /// By calling this method the calling thread will be blocked on the <code>request_thread_cv</code> until the
+        /// scheduler notifies it after the task is completed.
+        /// \attention If this method is called before <code>Scheduler::add_task(ScheduledTask)</code>, the calling
+        /// thread will enters an unrecoverable sleep. Please don't call this method if the calling thread is the thread
+        /// that runs the scheduler task processing loop, it would result in another unrecoverable sleep since there
+        /// is no other thread that can notify <code>request_thread_cv</code> than the scheduler itself.
+        void wait_for_completion();
 
         virtual void run() = 0;
 

@@ -21,8 +21,13 @@ using namespace veil::threading;
 ScheduledTask::ScheduledTask() : request_thread_waiting(true), prev(this), next(this), signal_completed(false),
                                  slept_thread_awake(false) {}
 
-void ScheduledTask::wait_for_completion(bool to_wait) {
-    this->request_thread_waiting = to_wait;
+ScheduledTask::~ScheduledTask() {
+    VeilAssert(this->signal_completed && (!this->request_thread_waiting || this->slept_thread_awake),
+               "Invalid going out of scope.");
+}
+
+void ScheduledTask::wait_for_completion() {
+    this->request_thread_waiting = true;
     // Wait until the task is being completed by the scheduler.
     while (this->signal_completed) this->request_thread_cv.wait();
     // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
