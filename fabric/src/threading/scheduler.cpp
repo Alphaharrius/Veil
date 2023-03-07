@@ -18,7 +18,7 @@
 
 using namespace veil::threading;
 
-ScheduledTask::ScheduledTask() : request_thread_waiting(true), prev(this), next(this), signal_completed(false),
+ScheduledTask::ScheduledTask() : request_thread_waiting(false), prev(this), next(this), signal_completed(false),
                                  slept_thread_awake(false) {}
 
 ScheduledTask::~ScheduledTask() {
