@@ -106,6 +106,14 @@ namespace veil::threading {
         bool volatile signal_completed;
         bool volatile slept_thread_awake;
 
+        void connect(ScheduledTask &task);
+
+        void disconnect();
+
+        ScheduledTask *get_next();
+
+        ScheduledTask *get_prev();
+
         friend void Scheduler::start();
         friend void Scheduler::add_task(ScheduledTask &task);
     };
