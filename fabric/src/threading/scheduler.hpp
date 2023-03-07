@@ -22,13 +22,26 @@
 #include "src/vm/structures.hpp"
 
 namespace veil::threading {
-    /// The threading management of this runtime is designed to be single-point manageable, except of having all threads
+    /// The threading management of this runtime is designed to be a facade manager, except of having all threads
     /// manages their own life cycle after spawning (pause/resume/termination), it will all be handled by the scheduler
     /// in a single-threaded task loop. Each task (sub classes of <code>ScheduledTask</code>) will encapsulate the
     /// requests to control or signal the thread's lifecycle, thus maximal thread-safety during these events are tightly
     /// guaranteed.
     class Scheduler;
 
+    /// A subclass of this class encapsulate a request to control or signal a thread's lifecycle, each task will be
+    /// queued in the task processing loop in the scheduler and processed one by one.
+    /// \attention Beware of the program going out of scope since the destructor will be called immediately and will
+    /// effectively breaks the task processing loop, to tackle this problem in an assertion is tested in the destructor
+    /// of this class to make sure segmentation fault never happens.<br><br>
+    /// If the calling thread is the thread who runs the scheduler process loop, this warning can be safely ignored;
+    /// else if the calling thread <b>does not</b> call the method <code>ScheduledTask::wait_for_completion()</code>
+    /// then make sure the scheduled task is allocated on the heap and is properly deallocated after the task completion
+    /// (This is problematic thus is <b>not suggested</b>.).<br><br>
+    /// The <b>best</b> way is to instantiate this class on the stack like <code>ScheduledTask task()</code> and wait
+    /// for the task completion using <code>ScheduledTask::wait_for_completion()</code>, this makes sure that the
+    /// reference of the task in the scheduler task processing loop is cleared before the destructor of the task is
+    /// called.
     class ScheduledTask;
 
     class VMThread;
