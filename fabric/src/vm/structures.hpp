@@ -82,18 +82,19 @@ namespace veil::vm {
 
     template<class R>
     void HasRoot<R>::bind(R &r) {
-        this->root = &r;
+        VeilAssert(this->HasRoot<R>::root == nullptr, "Rebinding root.");
+        this->HasRoot<R>::root = &r;
     }
 
     template<class R>
     void HasRoot<R>::unbind() {
-        this->root = nullptr;
+        this->HasRoot<R>::root = nullptr;
     }
 
-    template<class P>
-    P *HasRoot<P>::get() {
-        VeilAssert(this->root != nullptr, "Root not bind.");
-        return this->root;
+    template<class R>
+    R *HasRoot<R>::get() {
+        VeilAssert(this->HasRoot<R>::root != nullptr, "Root not bind.");
+        return this->HasRoot<R>::root;
     }
 
     template<class M>
@@ -115,18 +116,19 @@ namespace veil::vm {
 
     template<class M>
     M *HasMember<M>::get() {
-        VeilAssert(this->member != nullptr, "Member not bind.");
-        return this->member;
+        VeilAssert(this->HasMember<M>::member != nullptr, "Member not bind.");
+        return this->HasMember<M>::member;
     }
 
     template<class M>
     void HasMember<M>::bind(M &m) {
-        this->member = &m;
+        VeilAssert(this->HasMember<M>::member== nullptr, "Rebinding member.");
+        this->HasMember<M>::member = &m;
     }
 
     template<class M>
     void HasMember<M>::unbind() {
-        this->member = nullptr;
+        this->HasMember<M>::member = nullptr;
     }
 
     class Executable {
