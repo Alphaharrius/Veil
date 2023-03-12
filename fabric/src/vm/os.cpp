@@ -23,7 +23,7 @@
 
 #endif
 
-#include "os.hpp"
+#include "src/vm/os.hpp"
 
 uint64 veil::os::current_time_milliseconds() {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
