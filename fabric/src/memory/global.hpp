@@ -45,11 +45,7 @@ namespace veil::memory {
     public:
         void *operator new(size_t size) = delete;
 
-        void operator delete(void *address) = delete;
-
         void *operator new[](size_t size) = delete;
-
-        void operator delete[](void *address) = delete;
     };
 
     /// All VM objects that allocates to a arena-allocator \c TArena should extend this class. For structures or classes
