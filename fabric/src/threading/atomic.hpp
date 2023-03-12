@@ -20,22 +20,6 @@
 
 namespace veil::os {
 
-    struct atomic_u16_t {
-    public:
-        explicit atomic_u16_t(uint16 initial);
-
-        [[nodiscard]] uint16 load() const;
-
-        void store(uint16 value);
-
-        [[nodiscard]] uint16 exchange(uint16 value);
-
-        [[nodiscard]] uint16 compare_exchange(uint16 compare, uint16 value);
-
-    private:
-        uint16 embedded;
-    };
-
     struct atomic_u32_t {
     public:
         explicit atomic_u32_t(uint32 initial);
@@ -95,7 +79,7 @@ namespace veil::os {
         [[nodiscard]] bool exchange(bool value);
 
     private:
-        atomic_u16_t embedded;
+        atomic_u32_t embedded;
     };
 
     template<typename T>

@@ -25,66 +25,6 @@
 
 using namespace veil::os;
 
-atomic_u16_t::atomic_u16_t(uint16 initial) : embedded(initial) {}
-
-uint16 atomic_u16_t::load() const {
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    return InterlockedOr16((volatile SHORT *) &this->embedded, 0);
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-#   if defined(__GNUC__) || defined(__GNUG__)
-    // Using the GNU implementation available with the GCC compiler:
-    // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
-
-    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
-    return __atomic_load_n((volatile uint16 *) &this->embedded, __ATOMIC_SEQ_CST);
-#   else
-#   error "Atomic operations not supported in the current build environment."
-#   endif
-#   endif
-}
-
-void atomic_u16_t::store(uint16 value) {
-    uint32 _ = this->exchange(value);
-}
-
-uint16 atomic_u16_t::exchange(uint16 value) {
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    return InterlockedExchange16((volatile SHORT *) &this->embedded, (SHORT) value);
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-#   if defined(__GNUC__) || defined(__GNUG__)
-    // Using the GNU implementation available with the GCC compiler:
-    // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
-
-    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
-    return __atomic_load_n((volatile uint16 *) &this->embedded, __ATOMIC_SEQ_CST);
-#   else
-#   error "Atomic operations not supported in the current build environment."
-#   endif
-#   endif
-}
-
-uint16 atomic_u16_t::compare_exchange(uint16 compare, uint16 value) {
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
-    return InterlockedCompareExchange16((volatile SHORT *) &this->embedded, static_cast<int16>(value),
-                                        static_cast<int16>(compare));
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-#   if defined(__GNUC__) || defined(__GNUG__)
-    // Using the GNU implementation available with the GCC compiler:
-    // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
-
-    // This value will be exchanged with the value of the atomic value if unmatched; remains the same if matched since
-    // both values are the same.
-    uint16 expected = compare;
-    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
-    __atomic_compare_exchange_n(
-            (volatile uint16 *) &this->embedded, &expected, value, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return expected;
-#   else
-#   error "Atomic operations not supported in the current build environment."
-#   endif
-#   endif
-}
-
 atomic_u32_t::atomic_u32_t(uint32 initial) : embedded(initial) {}
 
 uint32 atomic_u32_t::load() const {
