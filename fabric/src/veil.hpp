@@ -16,10 +16,28 @@
 #ifndef VEIL_HPP
 #define VEIL_HPP
 
+#include <string>
+
+#include "src/typedefs.hpp"
+
 namespace veil {
 
-    static const char *VM_NAME = "Veil Fabric 64-bit Runtime";
-    static const char *VM_VERSION = "0.0.1b";
+    struct VMVersion {
+        const int32 major;
+        const int32 minor;
+        const int32 patch;
+        const int32 build_no;
+
+        [[nodiscard]] std::string to_string() const;
+    };
+
+    std::string VMVersion::to_string() const {
+        return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch) + "-b" +
+               std::to_string(build_no);
+    }
+
+    const std::string VM_NAME = "Veil Fabric (64-bit) Standard Runtime";
+    const VMVersion VM_VERSION = {0, 0, 0, 0};
 
 }
 
