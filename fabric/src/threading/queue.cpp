@@ -55,26 +55,30 @@ bool Queuee::try_queue(Queue &queue) {
 }
 
 void Queuee::queue(Queue &queue) {
-    if (!try_queue(queue)) {
-        this->target = &queue; // Mark the target queuee.
-        // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
-        // competing monitor will queue behind the top queuee.
-        Queuee *last_queuee = queue.last_queuee.exchange(this);
-        // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is
-        // the first owner, and is allowed to proceed without blocking on the condition variable.
-        if (last_queuee != nullptr) {
-            // The current queue is active and waited in a queue.
-            this->status = STAT_QUEUE;
-            while (!last_queuee->exit_queue) {
-                // Wait until the last queuee signals the exit of the queue, and check for the valid wakeup condition to
-                // prevent spurious wakeup.
-                last_queuee->blocking_cv.wait();
-            }
-            // Signal the last queuee that this queuee have been queuee_notified and resume in queue acquisition. The
-            // exit procedure of the last queuee will check if this flag is set before exiting its looping call to exit
-            // the current queuee.
-            last_queuee->queuee_notified = true;
+    if (try_queue(queue)) {
+        // The queue is acquired by spinning.
+        this->status = STAT_ACQUIRE;
+        return;
+    }
+
+    this->target = &queue; // Mark the target queuee.
+    // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
+    // competing monitor will queue behind the top queuee.
+    Queuee *last_queuee = queue.last_queuee.exchange(this);
+    // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is
+    // the first owner, and is allowed to proceed without blocking on the condition variable.
+    if (last_queuee != nullptr) {
+        // The current queue is active and waited in a queue.
+        this->status = STAT_QUEUE;
+        while (!last_queuee->exit_queue) {
+            // Wait until the last queuee signals the exit of the queue, and check for the valid wakeup condition to
+            // prevent spurious wakeup.
+            last_queuee->blocking_cv.wait();
         }
+        // Signal the last queuee that this queuee have been queuee_notified and resume in queue acquisition. The
+        // exit procedure of the last queuee will check if this flag is set before exiting its looping call to exit
+        // the current queuee.
+        last_queuee->queuee_notified = true;
     }
 
     // At this stage this queuee have fully acquired the queue object.
