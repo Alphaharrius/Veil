@@ -30,26 +30,38 @@ namespace veil::threading {
     class Scheduler;
 
     /// A subclass of this class encapsulate a request to control or signal a thread's lifecycle, each task will be
-    /// queued in the task processing loop in the scheduler and processed one by one.
+    /// queued in the task loop in the scheduler and processed one by one.
     /// \attention Beware of the program going out of scope since the destructor will be called immediately and will
-    /// effectively breaks the task processing loop, to tackle this problem in an assertion is tested in the destructor
-    /// of this class to make sure segmentation fault never happens.<br><br>
+    /// effectively breaks the task loop, to tackle this problem in an assertion is tested in the destructor of this
+    /// class to make sure segmentation fault never happens.<br><br>
     /// If the calling thread is the thread who runs the scheduler process loop, this warning can be safely ignored;
     /// else if the calling thread <b>does not</b> call the method <code>ScheduledTask::wait_for_completion()</code>
     /// then make sure the scheduled task is allocated on the heap and is properly deallocated after the task completion
     /// (This is problematic thus is <b>not suggested</b>.).<br><br>
     /// The <b>best</b> way is to instantiate this class on the stack like <code>ScheduledTask task()</code> and wait
     /// for the task completion using <code>ScheduledTask::wait_for_completion()</code>, this makes sure that the
-    /// reference of the task in the scheduler task processing loop is cleared before the destructor of the task is
-    /// called.
+    /// reference of the task in the scheduler task loop is cleared before the destructor of the task is called.
     class ScheduledTask;
 
     class VMThread;
 
     class VMService;
 
+    struct VMThreadAccess {
+    protected:
+        static void mark_busy(VMThread &thread);
+
+        static void mark_idle(VMThread &thread);
+
+        static void wait_for_termination(VMThread &thread);
+    };
+
     class Scheduler : public memory::ValueObject, private memory::TArena<threading::VMThread> {
     public:
+        class StartServiceTask;
+
+        class ThreadReturnTask;
+
         Scheduler();
 
         /// \brief Start the task loop of the scheduler.
@@ -62,6 +74,8 @@ namespace veil::threading {
         void start();
 
         void add_task(ScheduledTask &task);
+
+        void add_realtime_task(ScheduledTask &task);
 
         void notify_added_task();
 
@@ -86,6 +100,8 @@ namespace veil::threading {
         /// This pointer will be <code>nullptr</code> if there are no task left to do.
         ScheduledTask *current_task;
 
+        VMThread &idle_thread();
+
         /// Internal method to be called within <code>start()</code> only if the flag <code>termination_requested</code>
         /// is set <code>true</code>.
         /// \attention The action of <code>Scheduler::terminate()</code> will not use the scheduler process loop, it
@@ -95,24 +111,28 @@ namespace veil::threading {
         void finalization_on_termination();
     };
 
-    class ScheduledTask {
+    class ScheduledTask : public vm::HasRoot<Scheduler> {
     public:
         ScheduledTask();
 
-        ~ScheduledTask();
+        virtual ~ScheduledTask();
 
         /// \brief Wait until the task is being processed by the scheduler.
         /// By calling this method the calling thread will be blocked on the <code>request_thread_cv</code> until the
         /// scheduler notifies it after the task is completed.
         /// \attention If this method is called before <code>Scheduler::add_task(ScheduledTask)</code>, the calling
         /// thread will enters an unrecoverable sleep. Please don't call this method if the calling thread is the thread
-        /// that runs the scheduler task processing loop, it would result in another unrecoverable sleep since there
-        /// is no other thread that can notify <code>request_thread_cv</code> than the scheduler itself.
+        /// that runs the scheduler task loop, it would result in another unrecoverable sleep since there is no other
+        /// thread that can notify <code>request_thread_cv</code> than the scheduler itself.
         void wait_for_completion();
+
+        void transfer_ownership();
 
         virtual void run() = 0;
 
     private:
+        bool caller_owned;
+
         ScheduledTask *prev;
         ScheduledTask *next;
         os::ConditionVariable request_thread_cv;
@@ -120,7 +140,9 @@ namespace veil::threading {
         bool volatile signal_completed;
         bool volatile slept_thread_awake;
 
-        void connect(ScheduledTask &task);
+        void connect_last(ScheduledTask &task);
+
+        void connect_next(ScheduledTask &task);
 
         void disconnect();
 
@@ -129,7 +151,10 @@ namespace veil::threading {
         ScheduledTask *get_prev();
 
         friend void Scheduler::start();
+
         friend void Scheduler::add_task(ScheduledTask &task);
+
+        friend void Scheduler::add_realtime_task(ScheduledTask &task);
     };
 
     class VMThread : public memory::ArenaObject, public vm::HasRoot<Scheduler>, public vm::HasMember<VMService> {
@@ -140,6 +165,9 @@ namespace veil::threading {
 
         void host(VMService &service);
 
+        [[nodiscard]] bool is_idle() const;
+
+    protected:
         bool sleep(uint32 milliseconds);
 
     private:
@@ -158,16 +186,44 @@ namespace veil::threading {
         bool check_if_interrupted();
 
         void pause_if_requested();
+
+        friend class VMThreadAccess;
     };
 
-    class VMService : public vm::HasName, public vm::Executable, public vm::HasRoot<VMThread> {
+    class VMService : public vm::HasName, public vm::Executable,
+                      public vm::HasRoot<Scheduler>, public vm::HasRoot<VMThread> {
     public:
+        explicit VMService(std::string name);
+
+        virtual ~VMService();
+
         void execute() override;
 
         uint64 get_unique_identifier();
 
-        virtual void run_task() = 0;
+        virtual void run() = 0;
     };
+
+    class Scheduler::StartServiceTask : public memory::ValueObject, public ScheduledTask, private VMThreadAccess {
+    public:
+        explicit StartServiceTask(VMService &target_service);
+
+        void run() override;
+
+    private:
+        VMService *target_service;
+    };
+
+    class Scheduler::ThreadReturnTask : public memory::HeapObject, public ScheduledTask, private VMThreadAccess {
+    public:
+        explicit ThreadReturnTask(VMThread &target_thread);
+
+        void run() override;
+
+    private:
+        VMThread *target_thread;
+    };
+
 }
 
 #endif //VEIL_FABRIC_SRC_THREADING_SCHEDULER_HPP

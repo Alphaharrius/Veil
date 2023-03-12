@@ -18,8 +18,14 @@
 
 using namespace veil::threading;
 
-ScheduledTask::ScheduledTask() : request_thread_waiting(false), prev(this), next(this), signal_completed(false),
-                                 slept_thread_awake(false) {}
+void VMThreadAccess::mark_busy(VMThread &thread) { thread.idle = false; }
+
+void VMThreadAccess::mark_idle(VMThread &thread) { thread.idle = true; }
+
+void VMThreadAccess::wait_for_termination(VMThread &thread) { thread.embedded_os_thread.join(); }
+
+ScheduledTask::ScheduledTask() : caller_owned(true), request_thread_waiting(false), prev(this), next(this),
+                                 signal_completed(false), slept_thread_awake(false) {}
 
 ScheduledTask::~ScheduledTask() {
     VeilAssert(this->signal_completed && (!this->request_thread_waiting || this->slept_thread_awake),
@@ -34,7 +40,9 @@ void ScheduledTask::wait_for_completion() {
     this->slept_thread_awake = true;
 }
 
-void ScheduledTask::connect(ScheduledTask &task) {
+void ScheduledTask::transfer_ownership() { caller_owned = false; }
+
+void ScheduledTask::connect_last(ScheduledTask &task) {
     // Connect the previous task to the new task.
     this->prev->next = &task;
     task.prev = this->prev;
@@ -42,6 +50,16 @@ void ScheduledTask::connect(ScheduledTask &task) {
     // Connect this task to the new task.
     this->prev = &task;
     task.next = this;
+}
+
+void ScheduledTask::connect_next(ScheduledTask &task) {
+    // Connect the next task to the new task.
+    this->next->prev = &task;
+    task.next = this->next;
+
+    // Connect this task to the new task.
+    this->next = &task;
+    task.prev = this;
 }
 
 void ScheduledTask::disconnect() {
@@ -59,7 +77,6 @@ Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), term
 
 void Scheduler::start() {
     ScheduledTask *selected;
-    // Fetch a task to run.
     Fetch:
     {
         os::CriticalSection _(scheduler_action_m);
@@ -86,6 +103,8 @@ void Scheduler::start() {
         }
     }
 
+    // start: process the selected task.
+    selected->vm::HasRoot<Scheduler>::bind(*this);
     selected->run();
     selected->disconnect(); // Disconnect the task from the circle task list as it is completed.
     selected->signal_completed = true; // Set the task as completed.
@@ -95,12 +114,22 @@ void Scheduler::start() {
         selected->request_thread_cv.notify();
         os::Thread::static_sleep(0);
     }
+
+    // TODO: Consider whether it is better that the scheduler hold a list of reusable ThreadReturnTask.
+    // If the caller have transferred ownership of the task to the scheduler via ScheduledTask::transfer_ownership(),
+    // the scheduler will be responsible to free the memory of this task struct.
+    if (!selected->caller_owned) delete selected;
+    // end: process the selected task.
+
     goto Fetch;
 
+    // start: idle state.
     Pause:
     process_cycle_paused = true;
     process_cycle_pause_cv.wait();
     process_cycle_paused = false;
+    // end: idle state.
+
     goto Fetch;
 
     // NOTE: The action of Scheduler::terminate() will not use the scheduler process loop, it should independently
@@ -126,7 +155,24 @@ void Scheduler::add_task(ScheduledTask &task) {
 
     // Connect the new task to the circle task list.
     if (this->current_task == nullptr) current_task = &task;
-    else current_task->connect(task);
+    else current_task->connect_last(task);
+}
+
+void Scheduler::add_realtime_task(ScheduledTask &task) {
+    // Scheduler state specific task is protected by the mutex scheduler_action_m.
+    // The following process is to:
+    // 1. Connect the new task to the right side of the current task or the 'next' of the circle list according to the
+    //    direction of process flow (from left to right); if there are no task in the circle list place the new task
+    //    in the position of the current task.
+    // 2. If the scheduler is in pause state, attempt to resume it to start processing new tasks.
+    os::CriticalSection _(scheduler_action_m);
+
+    // Connect the new task to the circle task list.
+    if (this->current_task == nullptr) current_task = &task;
+    else
+        // Put the task to the next processing slot as it is important, if there are other high priority tasks placed
+        // before this, they will be displaced backwards.
+        current_task->connect_next(task);
 }
 
 void Scheduler::notify_added_task() {
@@ -139,9 +185,30 @@ void Scheduler::notify_added_task() {
     }
 }
 
-VMThread::VMThread() : idle(true), service_identifier(NULL_SERVICE_IDENTIFIER), signaled_interrupt(false) {}
+VMThread &Scheduler::idle_thread() {
+    memory::TArenaIterator<VMThread> iterator(*this);
+    VMThread *current = iterator.next();
+    while (current != nullptr) {
+        if (current->is_idle()) return *current;
+        current = iterator.next();
+    }
+
+    current = this->memory::TArena<VMThread>::allocate();
+    new(current) VMThread();
+
+    return *current;
+}
+
+VMThread::VMThread() : idle(true), service_identifier(NULL_SERVICE_IDENTIFIER), signaled_interrupt(false),
+                       thread_join_negotiated(false) {}
+
+bool VMThread::is_idle() const { return idle; }
 
 void VMThread::host(VMService &service) {
+    // Reset the all thread states for a fresh start.
+    signaled_interrupt.store(false);
+    thread_join_negotiated = false;
+
     // The scheduler requires to access each running services via this link between the VMService and the VMThread,
     // which VMThread is a member of Scheduler. This have to be un-bind before the service completed its lifecycle.
     this->vm::HasMember<VMService>::bind(service);
@@ -157,7 +224,7 @@ bool VMThread::sleep(uint32 milliseconds) {
     // request the current thread to sleep unless having some handshake mechanism.
     // Allowing a thread to sleep another thread is also dangerous since the request thread have no information about
     // the safe-points of the thread to be slept, thus is easier to lead to deadlock or other related issues.
-    VeilAssert(embedded_os_thread.id() == os::Thread::current_thread_id(), "Sleep is self invoked.");
+    VeilAssert(embedded_os_thread.id() == os::Thread::current_thread_id(), "Sleep invoked by another thread.");
 
     // It is better to check for interrupt before sleeping. Since the thread is deemed to be 'killed', thus this sleep
     // is just prolonged its trivial existence. If the interrupt thread is joining with this thread, executing sleep
@@ -186,12 +253,32 @@ bool VMThread::sleep(uint32 milliseconds) {
 
 inline bool VMThread::check_if_interrupted() { return signaled_interrupt.load(); }
 
+void VMThread::pause_if_requested() {
+    // TODO: Implement.
+}
+
 void VMService::execute() {
-    run_task();
-    // The service will be completed by the following means:
-    // - The service is interrupted and after proper wrap-up process, the run_task() method of the service returns thus
-    //   making the os thread joinable.
-    // TODO: Place a ScheduledTask to the scheduler to terminate the current session.
+    run();
+
+    // NOTE: The service will be completed by the following means:
+    // - The service is interrupted and after proper wrap-up process, the run() method of the service returns thus
+    //   ending the service's lifecycle.
+    // - The service is gracefully died the run() method of the service returns thus ending the service's lifecycle.
+
+    Scheduler *scheduler = this->vm::HasRoot<Scheduler>::get();
+
+    // Unbind the root thread just for the sake of tidiness, since we cannot determine whether the owner of this service
+    // will reuse this service structure.
+    VMThread *host_thread = this->vm::HasRoot<VMThread>::get();
+    this->vm::HasRoot<VMThread>::unbind();
+
+    auto *thread_return_task = new Scheduler::ThreadReturnTask(*host_thread);
+    thread_return_task->transfer_ownership();
+
+    scheduler->add_realtime_task(*thread_return_task);
+    scheduler->notify_added_task();
+
+    // The current service's lifecycle ends gracefully here.
 }
 
 uint64 VMService::get_unique_identifier() {
@@ -200,4 +287,30 @@ uint64 VMService::get_unique_identifier() {
     uint64 now = os::current_time_milliseconds();
     auto self_seed = (uint64) this;
     return now ^ self_seed;
+}
+
+VMService::VMService(std::string name) : vm::HasName(name) {}
+
+VMService::~VMService() = default;
+
+Scheduler::StartServiceTask::StartServiceTask(VMService &target_service) : target_service(&target_service) {}
+
+void Scheduler::StartServiceTask::run() {
+    Scheduler *scheduler = this->vm::HasRoot<Scheduler>::get();
+
+    target_service->vm::HasRoot<Scheduler>::bind(*scheduler);
+
+    VMThread &host_thread = scheduler->idle_thread();
+    VMThreadAccess::mark_busy(host_thread);
+
+    host_thread.host(*target_service);
+}
+
+Scheduler::ThreadReturnTask::ThreadReturnTask(VMThread &target_thread) : target_thread(&target_thread) {}
+
+void Scheduler::ThreadReturnTask::run() {
+    target_thread->vm::HasMember<VMService>::unbind();
+
+    VMThreadAccess::wait_for_termination(*target_thread);
+    VMThreadAccess::mark_idle(*target_thread);
 }
