@@ -20,25 +20,41 @@
 
 namespace veil::os {
 
+    struct atomic_u16_t {
+    public:
+        explicit atomic_u16_t(uint16 initial);
+
+        [[nodiscard]] uint16 load() const;
+
+        void store(uint16 value);
+
+        [[nodiscard]] uint16 exchange(uint16 value);
+
+        [[nodiscard]] uint16 compare_exchange(uint16 compare, uint16 value);
+
+    private:
+        uint16 embedded;
+    };
+
     struct atomic_u32_t {
     public:
         explicit atomic_u32_t(uint32 initial);
 
         [[nodiscard]] uint32 load() const;
 
-        void store(uint32 value) const;
+        void store(uint32 value);
 
-        [[nodiscard]] uint32 exchange(uint32 value) const;
+        [[nodiscard]] uint32 exchange(uint32 value);
 
-        [[nodiscard]] uint32 compare_exchange(uint32 compare, uint32 value) const;
+        [[nodiscard]] uint32 compare_exchange(uint32 compare, uint32 value);
 
-        [[nodiscard]] uint32 fetch_add(uint32 value) const;
+        [[nodiscard]] uint32 fetch_add(uint32 value);
 
-        [[nodiscard]] uint32 fetch_sub(uint32 value) const;
+        [[nodiscard]] uint32 fetch_sub(uint32 value);
 
-        [[nodiscard]] uint32 fetch_or(uint32 value) const;
+        [[nodiscard]] uint32 fetch_or(uint32 value);
 
-        [[nodiscard]] uint32 fetch_xor(uint32 value) const;
+        [[nodiscard]] uint32 fetch_xor(uint32 value);
 
     private:
         uint32 embedded;
@@ -50,19 +66,19 @@ namespace veil::os {
 
         [[nodiscard]] uint64 load() const;
 
-        void store(uint64 value) const;
+        void store(uint64 value);
 
-        [[nodiscard]] uint64 exchange(uint64 value) const;
+        [[nodiscard]] uint64 exchange(uint64 value);
 
-        [[nodiscard]] uint64 compare_exchange(uint64 compare, uint64 value) const;
+        [[nodiscard]] uint64 compare_exchange(uint64 compare, uint64 value);
 
-        [[nodiscard]] uint64 fetch_add(uint64 value) const;
+        [[nodiscard]] uint64 fetch_add(uint64 value);
 
-        [[nodiscard]] uint64 fetch_sub(uint64 value) const;
+        [[nodiscard]] uint64 fetch_sub(uint64 value);
 
-        [[nodiscard]] uint64 fetch_or(uint64 value) const;
+        [[nodiscard]] uint64 fetch_or(uint64 value);
 
-        [[nodiscard]] uint64 fetch_xor(uint64 value) const;
+        [[nodiscard]] uint64 fetch_xor(uint64 value);
 
     private:
         volatile uint64 embedded;
@@ -74,12 +90,12 @@ namespace veil::os {
 
         [[nodiscard]] bool load() const;
 
-        void store(bool value) const;
+        void store(bool value);
 
-        [[nodiscard]] bool exchange(bool value) const;
+        [[nodiscard]] bool exchange(bool value);
 
     private:
-        atomic_u32_t embedded;
+        atomic_u16_t embedded;
     };
 
     template<typename T>
@@ -89,11 +105,11 @@ namespace veil::os {
 
         [[nodiscard]] T *load() const;
 
-        void store(T *value) const;
+        void store(T *value);
 
-        [[nodiscard]] T *exchange(T *value) const;
+        [[nodiscard]] T *exchange(T *value);
 
-        [[nodiscard]] T *compare_exchange(T *compare, T *value) const;
+        [[nodiscard]] T *compare_exchange(T *compare, T *value);
 
     private:
         atomic_u64_t embedded;
@@ -108,17 +124,17 @@ namespace veil::os {
     }
 
     template<typename T>
-    void atomic_pointer_t<T>::store(T *value) const {
+    void atomic_pointer_t<T>::store(T *value) {
         embedded.store(reinterpret_cast<uint64>(value));
     }
 
     template<typename T>
-    T *atomic_pointer_t<T>::exchange(T *value) const {
+    T *atomic_pointer_t<T>::exchange(T *value) {
         return reinterpret_cast<T *>(embedded.exchange(reinterpret_cast<uint64>(value)));
     }
 
     template<typename T>
-    T *atomic_pointer_t<T>::compare_exchange(T *compare, T *value) const {
+    T *atomic_pointer_t<T>::compare_exchange(T *compare, T *value) {
         return reinterpret_cast<T *>(
                 embedded.compare_exchange(reinterpret_cast<uint64>(compare), reinterpret_cast<uint64>(value)));
     }

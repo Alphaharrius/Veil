@@ -25,6 +25,66 @@
 
 using namespace veil::os;
 
+atomic_u16_t::atomic_u16_t(uint16 initial) : embedded(initial) {}
+
+uint16 atomic_u16_t::load() const {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    return InterlockedOr16((volatile SHORT *) &this->embedded, 0);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   if defined(__GNUC__) || defined(__GNUG__)
+    // Using the GNU implementation available with the GCC compiler:
+    // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
+
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
+    return __atomic_load_n((volatile uint16 *) &this->embedded, __ATOMIC_SEQ_CST);
+#   else
+#   error "Atomic operations not supported in the current build environment."
+#   endif
+#   endif
+}
+
+void atomic_u16_t::store(uint16 value) {
+    uint32 _ = this->exchange(value);
+}
+
+uint16 atomic_u16_t::exchange(uint16 value) {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    return InterlockedExchange16((volatile SHORT *) &this->embedded, (SHORT) value);
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   if defined(__GNUC__) || defined(__GNUG__)
+    // Using the GNU implementation available with the GCC compiler:
+    // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
+
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
+    return __atomic_load_n((volatile uint16 *) &this->embedded, __ATOMIC_SEQ_CST);
+#   else
+#   error "Atomic operations not supported in the current build environment."
+#   endif
+#   endif
+}
+
+uint16 atomic_u16_t::compare_exchange(uint16 compare, uint16 value) {
+#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    return InterlockedCompareExchange16((volatile SHORT *) &this->embedded, static_cast<int16>(value),
+                                        static_cast<int16>(compare));
+#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#   if defined(__GNUC__) || defined(__GNUG__)
+    // Using the GNU implementation available with the GCC compiler:
+    // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
+
+    // This value will be exchanged with the value of the atomic value if unmatched; remains the same if matched since
+    // both values are the same.
+    uint16 expected = compare;
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
+    __atomic_compare_exchange_n(
+            (volatile uint16 *) &this->embedded, &expected, value, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return expected;
+#   else
+#   error "Atomic operations not supported in the current build environment."
+#   endif
+#   endif
+}
+
 atomic_u32_t::atomic_u32_t(uint32 initial) : embedded(initial) {}
 
 uint32 atomic_u32_t::load() const {
@@ -35,7 +95,7 @@ uint32 atomic_u32_t::load() const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_load_n((volatile uint32 *) &this->embedded, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -43,20 +103,20 @@ uint32 atomic_u32_t::load() const {
 #   endif
 }
 
-void atomic_u32_t::store(uint32 value) const {
+void atomic_u32_t::store(uint32 value) {
     // Storing is the same as exchanging with the returned value ignored.
     uint32 _ = this->exchange(value);
 }
 
-uint32 atomic_u32_t::exchange(uint32 value) const {
+uint32 atomic_u32_t::exchange(uint32 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedExchange((volatile LONG *) &this->embedded, (LONG) value);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    #   if defined(__GNUC__) || defined(__GNUG__)
+#   if defined(__GNUC__) || defined(__GNUG__)
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_exchange_n((volatile uint32 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -64,19 +124,19 @@ uint32 atomic_u32_t::exchange(uint32 value) const {
 #   endif
 }
 
-uint32 atomic_u32_t::compare_exchange(uint32 compare, uint32 value) const {
+uint32 atomic_u32_t::compare_exchange(uint32 compare, uint32 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedCompareExchange((volatile LONG *) &this->embedded, static_cast<int32>(value),
                                       static_cast<int32>(compare));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    #   if defined(__GNUC__) || defined(__GNUG__)
+#   if defined(__GNUC__) || defined(__GNUG__)
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
     // This value will be exchanged with the value of the atomic value if unmatched; remains the same if matched since
     // both values are the same.
     uint32 expected = compare;
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     __atomic_compare_exchange_n(
             (volatile uint32 *) &this->embedded, &expected, value, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
     return expected;
@@ -86,15 +146,15 @@ uint32 atomic_u32_t::compare_exchange(uint32 compare, uint32 value) const {
 #   endif
 }
 
-uint32 atomic_u32_t::fetch_add(uint32 value) const {
+uint32 atomic_u32_t::fetch_add(uint32 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedAdd((volatile LONG *) &this->embedded, static_cast<int32>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    #   if defined(__GNUC__) || defined(__GNUG__)
+#   if defined(__GNUC__) || defined(__GNUG__)
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_add_fetch((volatile uint32 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -102,15 +162,15 @@ uint32 atomic_u32_t::fetch_add(uint32 value) const {
 #   endif
 }
 
-uint32 atomic_u32_t::fetch_sub(uint32 value) const {
+uint32 atomic_u32_t::fetch_sub(uint32 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedExchangeSubtract((volatile uint32 *) &this->embedded, static_cast<uint32>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    #   if defined(__GNUC__) || defined(__GNUG__)
+#   if defined(__GNUC__) || defined(__GNUG__)
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_add_fetch((volatile uint32 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -118,15 +178,15 @@ uint32 atomic_u32_t::fetch_sub(uint32 value) const {
 #   endif
 }
 
-uint32 atomic_u32_t::fetch_or(uint32 value) const {
+uint32 atomic_u32_t::fetch_or(uint32 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedOr((volatile LONG *) &this->embedded, static_cast<int32>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    #   if defined(__GNUC__) || defined(__GNUG__)
+#   if defined(__GNUC__) || defined(__GNUG__)
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_add_fetch((volatile uint32 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -134,15 +194,15 @@ uint32 atomic_u32_t::fetch_or(uint32 value) const {
 #   endif
 }
 
-uint32 atomic_u32_t::fetch_xor(uint32 value) const {
+uint32 atomic_u32_t::fetch_xor(uint32 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedXor((volatile LONG *) &this->embedded, static_cast<int32>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-    #   if defined(__GNUC__) || defined(__GNUG__)
+#   if defined(__GNUC__) || defined(__GNUG__)
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_add_fetch((volatile uint32 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -160,7 +220,7 @@ uint64 atomic_u64_t::load() const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_load_n((volatile uint64 *) &this->embedded, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -168,12 +228,12 @@ uint64 atomic_u64_t::load() const {
 #   endif
 }
 
-void atomic_u64_t::store(uint64 value) const {
+void atomic_u64_t::store(uint64 value) {
     // Storing is the same as exchanging with the returned value ignored.
     uint64 _ = this->exchange(value);
 }
 
-uint64 atomic_u64_t::exchange(uint64 value) const {
+uint64 atomic_u64_t::exchange(uint64 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedExchange64((volatile LONGLONG *) &this->embedded, (LONGLONG) value);
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -181,7 +241,7 @@ uint64 atomic_u64_t::exchange(uint64 value) const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_exchange_n((volatile uint64 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -189,7 +249,7 @@ uint64 atomic_u64_t::exchange(uint64 value) const {
 #   endif
 }
 
-uint64 atomic_u64_t::compare_exchange(uint64 compare, uint64 value) const {
+uint64 atomic_u64_t::compare_exchange(uint64 compare, uint64 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedCompareExchange64((volatile LONG64 *) &this->embedded, static_cast<int64>(value),
                                         static_cast<int64>(compare));
@@ -201,7 +261,7 @@ uint64 atomic_u64_t::compare_exchange(uint64 compare, uint64 value) const {
     // This value will be exchanged with the value of the atomic value if unmatched; remains the same if matched since
     // both values are the same.
     uint64 expected = compare;
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     __atomic_compare_exchange_n(
             (volatile uint64 *) &this->embedded, &expected, value, false, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
     return expected;
@@ -211,7 +271,7 @@ uint64 atomic_u64_t::compare_exchange(uint64 compare, uint64 value) const {
 #   endif
 }
 
-uint64 atomic_u64_t::fetch_add(uint64 value) const {
+uint64 atomic_u64_t::fetch_add(uint64 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedAdd64((volatile LONG64 *) &this->embedded, static_cast<int64>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -219,7 +279,7 @@ uint64 atomic_u64_t::fetch_add(uint64 value) const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_add_fetch((volatile uint64 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -227,7 +287,7 @@ uint64 atomic_u64_t::fetch_add(uint64 value) const {
 #   endif
 }
 
-uint64 atomic_u64_t::fetch_sub(uint64 value) const {
+uint64 atomic_u64_t::fetch_sub(uint64 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedExchangeSubtract((volatile unsigned long long *) &this->embedded, static_cast<int64>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -235,7 +295,7 @@ uint64 atomic_u64_t::fetch_sub(uint64 value) const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_sub_fetch((volatile uint64 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -243,7 +303,7 @@ uint64 atomic_u64_t::fetch_sub(uint64 value) const {
 #   endif
 }
 
-uint64 atomic_u64_t::fetch_or(uint64 value) const {
+uint64 atomic_u64_t::fetch_or(uint64 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedOr64((volatile LONGLONG *) &this->embedded, static_cast<int64>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -251,7 +311,7 @@ uint64 atomic_u64_t::fetch_or(uint64 value) const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_or_fetch((volatile uint64 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -259,7 +319,7 @@ uint64 atomic_u64_t::fetch_or(uint64 value) const {
 #   endif
 }
 
-uint64 atomic_u64_t::fetch_xor(uint64 value) const {
+uint64 atomic_u64_t::fetch_xor(uint64 value) {
 #   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
     return InterlockedXor64((volatile LONG64 *) &this->embedded, static_cast<int64>(value));
 #   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
@@ -267,7 +327,7 @@ uint64 atomic_u64_t::fetch_xor(uint64 value) const {
     // Using the GNU implementation available with the GCC compiler:
     // https://gcc.gnu.org/onlinedocs/gcc-4.7.2/gcc/_005f_005fatomic-Builtins.html#g_t_005f_005fatomic-Builtins
 
-    // Using __ATOMIC_SEQ_CST makes atomic operation a optimization barrier, and ensures consistency across all threads.
+    // Using __ATOMIC_SEQ_CST makes atomic operation an optimization barrier, and ensures consistency across threads.
     return __atomic_xor_fetch((volatile uint64 *) &this->embedded, value, __ATOMIC_SEQ_CST);
 #   else
 #   error "Atomic operations not supported in the current build environment."
@@ -281,10 +341,10 @@ bool atomic_bool_t::load() const {
     return embedded.load() != 0;
 }
 
-void atomic_bool_t::store(bool value) const {
+void atomic_bool_t::store(bool value) {
     return embedded.store(value ? 1 : 0);
 }
 
-bool atomic_bool_t::exchange(bool value) const {
+bool atomic_bool_t::exchange(bool value) {
     return embedded.exchange(value ? 1 : 0);
 }
