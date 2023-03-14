@@ -83,8 +83,14 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [x] ```OrderedQueue```
 
 6. [ ] Implement the thread management.
-    - [ ] All management's functionality should be protected by a mutex.
-    - [ ] Method to interrupt all thread at once.
+    - [x] All management's functionality should be protected by a mutex.
+      - This is a legacy requirement, since the management (aka. scheduler) is running a single threaded loop to process
+        all thread controls.
+    - [x] Service spawning & termination using the underlying thread.
+    - [x] Thread sleep & wake.
+    - [x] Thread interrupt.
+    - [x] Thread pause & resume.
+    - [ ] Scheduler termination.
 
 7. [ ] Implement the Veil execution environment.
     - [ ] Design the Veil VM bytecode specifications.
