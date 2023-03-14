@@ -22,3 +22,7 @@ HandShake::HandShake() : internal_state(TIK) {}
 bool HandShake::tik() { return internal_state.compare_exchange(TIK, TOK); }
 
 bool HandShake::tok() { return internal_state.compare_exchange(TOK, TIK); }
+
+bool HandShake::is_tik() { return internal_state.load() == TIK; }
+
+bool HandShake::is_tok() { return internal_state.load() == TOK; }
