@@ -3,22 +3,22 @@
 #include <string>
 #include <utility>
 
-#include "src/threading/queue.hpp"
+#include "src/threading/ordered-queue.hpp"
 
 using namespace veil::threading;
 
-Queue queue_0;
-Queue queue_1;
-Queue queue_2;
+OrderedQueue queue_0;
+OrderedQueue queue_1;
+OrderedQueue queue_2;
 
 struct Params {
     std::string index;
-    QueueClient *client;
+    OrderedQueueClient *client;
     uint32 *count;
     uint32 iteration_count;
 
     Params(std::string index,
-           QueueClient *client,
+           OrderedQueueClient *client,
            uint32 *count,
            uint32 iteration_count) : index(std::move(index)),
                                      client(client),
@@ -91,9 +91,9 @@ void nested_reentrance_with_count_sleep_1s(Params *params) {
 }
 
 int main() {
-    QueueClient client_0;
-    QueueClient client_1;
-    QueueClient client_2;
+    OrderedQueueClient client_0;
+    OrderedQueueClient client_1;
+    OrderedQueueClient client_2;
 
     uint32 count = 0;
     uint32 iteration_count = 4096;

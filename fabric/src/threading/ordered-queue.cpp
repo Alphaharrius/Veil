@@ -15,14 +15,14 @@
 
 #include <new>
 
-#include "src/threading/queue.hpp"
+#include "src/threading/ordered-queue.hpp"
 #include "src/threading/config.hpp"
 
 using namespace veil::threading;
 
-Queuee::Queuee() : status(STAT_IDLE), reentrance_count(0), target(nullptr), exit_queue(false), queuee_notified(false) {}
+OrderedQueuee::OrderedQueuee() : status(STAT_IDLE), reentrance_count(0), target(nullptr), exit_queue(false), queuee_notified(false) {}
 
-bool Queuee::try_queue(Queue &queue) {
+bool OrderedQueuee::try_queue(OrderedQueue &queue) {
     // Check if the current queuee queues to on the same queue it have been queued, if so the current acquire can be
     // considered as a reentrance behavior, increment the reentrance count and exit the method. It is enforced that the
     // root client will assign the reentrance acquire operation to the queuee that have acquired the same target.
@@ -54,7 +54,7 @@ bool Queuee::try_queue(Queue &queue) {
     return true;
 }
 
-void Queuee::queue(Queue &queue) {
+void OrderedQueuee::queue(OrderedQueue &queue) {
     if (try_queue(queue)) {
         // The queue is acquired by spinning.
         this->status = STAT_ACQUIRE;
@@ -64,7 +64,7 @@ void Queuee::queue(Queue &queue) {
     this->target = &queue; // Mark the target queuee.
     // Perform atomic exchange for the last queuee address with the address of this queuee, this ensures only one
     // competing monitor will queue behind the top queuee.
-    Queuee *last_queuee = queue.last_queuee.exchange(this);
+    OrderedQueuee *last_queuee = queue.last_queuee.exchange(this);
     // If the last queuee monitor is nullptr, it implies that the queue has yet to be acquired and this queuee is
     // the first owner, and is allowed to proceed without blocking on the condition variable.
     if (last_queuee != nullptr) {
@@ -85,7 +85,7 @@ void Queuee::queue(Queue &queue) {
     this->status = STAT_ACQUIRE;
 }
 
-bool Queuee::exit(Queue &queue) {
+bool OrderedQueuee::exit(OrderedQueue &queue) {
     // Return the method directly if the queue to exit from does not match with the target queue as exiting before
     // owning a target will result in a blocking as this procedure tries to notify a non-existing queuee behind.
     if (&queue != this->target) {
@@ -127,21 +127,21 @@ bool Queuee::exit(Queue &queue) {
     return true;
 }
 
-QueueClient::QueueClient() : nested_level(0) {}
+OrderedQueueClient::OrderedQueueClient() : nested_level(0) {}
 
-QueueClient::~QueueClient() {
-    // Destruct individual Queuee.
+OrderedQueueClient::~OrderedQueueClient() {
+    // Destruct individual OrderedQueuee.
     this->destruct_objects();
     // Release all memory allocated by the cache.
     this->free();
 }
 
-void QueueClient::wait(Queue &target) {
-    Queuee *reentrance = nullptr;
-    Queuee *available = nullptr;
+void OrderedQueueClient::wait(OrderedQueue &target) {
+    OrderedQueuee *reentrance = nullptr;
+    OrderedQueuee *available = nullptr;
 
-    memory::TArenaIterator<Queuee> iterator(*this);
-    Queuee *current = iterator.next();
+    memory::TArenaIterator<OrderedQueuee> iterator(*this);
+    OrderedQueuee *current = iterator.next();
     // The purpose of this loop is to look for queuee that have been queued on the target to be queued (reentrance), or
     // to look for a reusable queuee from another completed target operation.
     while (current != nullptr &&
@@ -150,7 +150,7 @@ void QueueClient::wait(Queue &target) {
            // available queuee is found then the search is successful.
            (available == nullptr || this->nested_level != 0) && reentrance == nullptr) {
         // Reusable queuee will be marked as idle.
-        if (current->status == Queuee::STAT_IDLE) available = current;
+        if (current->status == OrderedQueuee::STAT_IDLE) available = current;
             // The queuee to reentry
         else if (current->target == &target) reentrance = current;
         current = iterator.next();
@@ -162,21 +162,21 @@ void QueueClient::wait(Queue &target) {
     if (available == nullptr) {
         available = this->allocate();
         // Instantiate the new queuee.
-        new(available) Queuee();
+        new(available) OrderedQueuee();
     }
     available->queue(target);
     this->nested_level++;
 }
 
-void QueueClient::exit(Queue &target) {
+void OrderedQueueClient::exit(OrderedQueue &target) {
     // Return if the client hasn't wait on any target.
     if (this->nested_level == 0) return;
 
-    memory::TArenaIterator<Queuee> iterator(*this);
-    Queuee *current = iterator.next();
+    memory::TArenaIterator<OrderedQueuee> iterator(*this);
+    OrderedQueuee *current = iterator.next();
     do {
         // Search for the child queuee which have acquired the target queue, the first occurrence will also be the only
-        // occurrence as QueueClient::wait ensured all reentrance behavior to be focused into a single queuee. The only
+        // occurrence as OrderedQueueClient::wait ensured all reentrance behavior to be focused into a single queuee. The only
         // occurrence will also be in STAT_ACQUIRE as this operation will not be reached it is still in STAT_QUEUE, in
         // other words the thread of this client is still in blocking state.
         if (current->exit(target)) {

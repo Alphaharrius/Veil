@@ -77,10 +77,10 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [x] Add handling for spurious wakeup of ```ConditionVariable```.
 
 4. [x] Implement VM specific threading primitives.
-    - [x] A low object memory footprint queue-based thread synchronization primitive ```Queue```.
+    - [x] A low object memory footprint queue-based thread synchronization primitive ```OrderedQueue```.
 
 5. [x] Exchange all existing usage of ```<atomic>``` and ```<condition_variable>``` to the encapsulations.
-    - [x] ```Queue```
+    - [x] ```OrderedQueue```
 
 6. [ ] Implement the thread management.
     - [ ] All management's functionality should be protected by a mutex.
