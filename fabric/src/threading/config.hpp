@@ -26,7 +26,12 @@ namespace veil::threading::config {
     /// performing a wait operation on the target object.
     static uint32 mutex_spin_count = 32;
 
-    static uint32 pause_request_wait_milliseconds = 60000;
+    /// The maximum time in milliseconds that a requesting thread of a pause action (which will be the thread scheduler)
+    /// will wait before throwing an <b>abort</b> signal to terminate the VM. We assumed that all pause actions will be
+    /// called after waking the target thread from its sleep, and <code>os::Thread::static_sleep(uint32)</code> will not
+    /// be used in long periods that exceeds this value, any thread that fail to respond within this period will be
+    /// considered to be in a deadlock state, thus the abort is justified.
+    static uint32 pause_request_wait_milliseconds = 60000; // 1 minute by default.
 
 }
 
