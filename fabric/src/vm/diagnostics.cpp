@@ -16,11 +16,15 @@
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
 #include <windows.h>
+
+#if defined(_MSC_VER)
 #include <dbghelp.h>
-
 #pragma comment(lib, "dbghelp.lib")
+#endif
 
-#elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
+#elif defined(__linux__) || defined(__linux) || defined(linux)
+
+#include <execinfo.h>
 
 #endif
 
@@ -37,12 +41,13 @@ void veil::force_exit_on_error(std::string reason, LineInfo line_info) {
     static os::Mutex log_error_m;
     {
         os::CriticalSection _(log_error_m);
-        std::cerr << "===" << std::endl
-                  << "A critical error is detected by the runtime environment!" << std::endl
-                  << "Reason: " << reason << std::endl
+        std::cerr << "===\n"
+                  << "A critical error is detected by the runtime environment!\n"
+                  << "Reason: " << reason << "\n"
                   << "At: " << line_info.function_name << "() "
-                  << line_info.filename << ":" << line_info.line_number << std::endl
-                  << "Runtime: " << veil::VM_NAME << " version(" << veil::VM_VERSION << ")" << std::endl;
+                  << line_info.filename << ":" << line_info.line_number << "\n"
+                  << "Runtime: " << veil::VM_NAME << "\n"
+                  << "Version: " << veil::VM_VERSION.to_string() << "\n";
         veil::print_callstack_trace();
     }
     ::exit(1);
@@ -56,38 +61,43 @@ void veil::assertion_error(std::string reason, veil::LineInfo line_info) {
     veil::force_exit_on_error("Assertion error :: " + reason, line_info);
 }
 
+// @formatter:off
 void veil::print_callstack_trace() {
+    static const int32 MAX_TRACE_COUNT = 32;
     static os::Mutex print_callstack_trace_m;
     os::CriticalSection _(print_callstack_trace_m);
 
-    std::cerr << "Callstack trace of thread(" << os::Thread::current_thread_id() << "):" << std::endl;
+    void *stack[MAX_TRACE_COUNT];
 
-#   if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
+    std::cerr << "===\n"
+              << "Callstack trace of thread(" << os::Thread::current_thread_id() << "):\n";
 
+#   if (defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)) and defined(_MSC_VER)
     SymInitialize(GetCurrentProcess(), nullptr, true);
 
     CONTEXT context;
     context.ContextFlags = CONTEXT_FULL;
     RtlCaptureContext(&context);
 
-    void* stack[100];
     WORD frames = CaptureStackBackTrace(0, 100, stack, nullptr);
 
     for (int i = 0; i < frames; ++i) {
-        auto address = (DWORD64)(stack[i]);
+        auto address = (DWORD64) (stack[i]);
         DWORD64 displacement = 0;
         char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-        auto symbol = (PSYMBOL_INFO)buffer;
+        auto symbol = (PSYMBOL_INFO) buffer;
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
         symbol->MaxNameLen = MAX_SYM_NAME;
         if (SymFromAddr(GetCurrentProcess(), address, &displacement, symbol))
-            std::cerr << "\t[" << i << "] " << symbol->Name << "() " << std::endl;
+            std::cerr << "\t[" << i << "] " << symbol->Name << "()\n";
     }
 
     SymCleanup(GetCurrentProcess());
-#   elif defined(__linux__) || defined(__linux) || defined(linux) || defined(__CYGWIN__)
-
+#   else
+    std::cerr << "\tThe current platform does not support stack tracing...\n";
 #   endif
+    std::cerr << "===\n";
 }
+// @formatter:on
 
 #pragma clang diagnostic pop
