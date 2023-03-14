@@ -32,6 +32,10 @@ namespace veil::threading {
 
         bool tok();
 
+        bool is_tik();
+
+        bool is_tok();
+
     private:
         os::atomic_u32_t internal_state;
     };
