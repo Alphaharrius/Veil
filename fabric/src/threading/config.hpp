@@ -26,6 +26,8 @@ namespace veil::threading::config {
     /// performing a wait operation on the target object.
     static uint32 mutex_spin_count = 32;
 
+    static uint32 pause_request_wait_milliseconds = 60000;
+
 }
 
 #endif //VEIL_FABRIC_SRC_THREADING_CONFIG_HPP
