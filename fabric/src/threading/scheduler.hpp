@@ -47,20 +47,15 @@ namespace veil::threading {
 
     class VMService;
 
-    struct VMThreadAccess {
-    protected:
-        static void mark_busy(VMThread &thread);
-
-        static void mark_idle(VMThread &thread);
-
-        static void wait_for_termination(VMThread &thread);
-    };
-
     class Scheduler : public memory::ValueObject, private memory::TArena<threading::VMThread> {
     public:
         class StartServiceTask;
 
         class ThreadReturnTask;
+
+        class ThreadPauseTask;
+
+        class ThreadResumeTask;
 
         Scheduler();
 
@@ -126,13 +121,9 @@ namespace veil::threading {
         /// thread that can notify <code>request_thread_cv</code> than the scheduler itself.
         void wait_for_completion();
 
-        void transfer_ownership();
-
         virtual void run() = 0;
 
     private:
-        bool caller_owned;
-
         ScheduledTask *prev;
         ScheduledTask *next;
         os::ConditionVariable request_thread_cv;
@@ -157,6 +148,60 @@ namespace veil::threading {
         friend void Scheduler::add_realtime_task(ScheduledTask &task);
     };
 
+    class Scheduler::StartServiceTask : public memory::ValueObject, public ScheduledTask {
+    public:
+        explicit StartServiceTask(VMService &target_service);
+
+        void run() override;
+
+    private:
+        VMService *target_service;
+    };
+
+    class Scheduler::ThreadReturnTask : public memory::ValueObject, public ScheduledTask {
+    public:
+        explicit ThreadReturnTask(VMThread &target_thread);
+
+        void run() override;
+
+    private:
+        VMThread *target_thread;
+    };
+
+    class Scheduler::ThreadPauseTask : public memory::ValueObject, public ScheduledTask {
+    public:
+        explicit ThreadPauseTask(VMThread &target_thread);
+
+        void run() override;
+
+    private:
+        VMThread *target_thread;
+    };
+
+    class Scheduler::ThreadResumeTask : public memory::ValueObject, public ScheduledTask {
+    public:
+        explicit ThreadResumeTask(VMThread &target_thread);
+
+        void run() override;
+
+    private:
+        VMThread *target_thread;
+    };
+
+    class VMService : public vm::HasName, public vm::Executable,
+                      public vm::HasRoot<Scheduler>, public vm::HasRoot<VMThread> {
+    public:
+        explicit VMService(std::string name);
+
+        virtual ~VMService();
+
+        void execute() override;
+
+        uint64 get_unique_identifier();
+
+        virtual void run() = 0;
+    };
+
     class VMThread : public memory::ArenaObject, public vm::HasRoot<Scheduler>, public vm::HasMember<VMService> {
     public:
         static const uint64 NULL_SERVICE_IDENTIFIER = 0;
@@ -176,52 +221,32 @@ namespace veil::threading {
         os::Thread embedded_os_thread;
 
         os::ConditionVariable self_blocking_cv;
+        os::ConditionVariable requester_waiting_cv;
         HandShake pause_handshake;
         HandShake resume_handshake;
+        HandShake wake_handshake;
         os::atomic_bool_t signaled_interrupt;
 
         bool volatile thread_join_negotiated;
         os::ConditionVariable thread_join_blocking_cv;
 
+        void wake();
+
         bool check_if_interrupted();
+
+        bool request_pause(uint32 wait_milliseconds);
+
+        void resume();
 
         void pause_if_requested();
 
-        friend class VMThreadAccess;
-    };
+        Scheduler::ThreadReturnTask self_return_task;
 
-    class VMService : public vm::HasName, public vm::Executable,
-                      public vm::HasRoot<Scheduler>, public vm::HasRoot<VMThread> {
-    public:
-        explicit VMService(std::string name);
-
-        virtual ~VMService();
-
-        void execute() override;
-
-        uint64 get_unique_identifier();
-
-        virtual void run() = 0;
-    };
-
-    class Scheduler::StartServiceTask : public memory::ValueObject, public ScheduledTask, private VMThreadAccess {
-    public:
-        explicit StartServiceTask(VMService &target_service);
-
-        void run() override;
-
-    private:
-        VMService *target_service;
-    };
-
-    class Scheduler::ThreadReturnTask : public memory::HeapObject, public ScheduledTask, private VMThreadAccess {
-    public:
-        explicit ThreadReturnTask(VMThread &target_thread);
-
-        void run() override;
-
-    private:
-        VMThread *target_thread;
+        friend void VMService::execute();
+        friend void Scheduler::StartServiceTask::run();
+        friend void Scheduler::ThreadReturnTask::run();
+        friend void Scheduler::ThreadPauseTask::run();
+        friend void Scheduler::ThreadResumeTask::run();
     };
 
 }

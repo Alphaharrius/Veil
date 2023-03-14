@@ -13,19 +13,14 @@
 /// You should have received a copy of the GNU General Public License
 /// along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+#include "src/threading/config.hpp"
 #include "src/threading/scheduler.hpp"
 #include "src/vm/os.hpp"
 
 using namespace veil::threading;
 
-void VMThreadAccess::mark_busy(VMThread &thread) { thread.idle = false; }
-
-void VMThreadAccess::mark_idle(VMThread &thread) { thread.idle = true; }
-
-void VMThreadAccess::wait_for_termination(VMThread &thread) { thread.embedded_os_thread.join(); }
-
-ScheduledTask::ScheduledTask() : caller_owned(true), request_thread_waiting(false), prev(this), next(this),
-                                 signal_completed(false), slept_thread_awake(false) {}
+ScheduledTask::ScheduledTask() : request_thread_waiting(false), prev(this), next(this), signal_completed(false),
+                                 slept_thread_awake(false) {}
 
 ScheduledTask::~ScheduledTask() {
     VeilAssert(this->signal_completed && (!this->request_thread_waiting || this->slept_thread_awake),
@@ -39,8 +34,6 @@ void ScheduledTask::wait_for_completion() {
     // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
     this->slept_thread_awake = true;
 }
-
-void ScheduledTask::transfer_ownership() { caller_owned = false; }
 
 void ScheduledTask::connect_last(ScheduledTask &task) {
     // Connect the previous task to the new task.
@@ -72,8 +65,7 @@ ScheduledTask *ScheduledTask::get_next() { return next; }
 
 ScheduledTask *ScheduledTask::get_prev() { return prev; }
 
-Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false) {
-}
+Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false) {}
 
 void Scheduler::start() {
     ScheduledTask *selected;
@@ -114,11 +106,6 @@ void Scheduler::start() {
         selected->request_thread_cv.notify();
         os::Thread::static_sleep(0);
     }
-
-    // TODO: Consider whether it is better that the scheduler hold a list of reusable ThreadReturnTask.
-    // If the caller have transferred ownership of the task to the scheduler via ScheduledTask::transfer_ownership(),
-    // the scheduler will be responsible to free the memory of this task struct.
-    if (!selected->caller_owned) delete selected;
     // end: process the selected task.
 
     goto Fetch;
@@ -200,7 +187,7 @@ VMThread &Scheduler::idle_thread() {
 }
 
 VMThread::VMThread() : idle(true), service_identifier(NULL_SERVICE_IDENTIFIER), signaled_interrupt(false),
-                       thread_join_negotiated(false) {}
+                       thread_join_negotiated(false), self_return_task(*this) {}
 
 bool VMThread::is_idle() const { return idle; }
 
@@ -226,20 +213,22 @@ bool VMThread::sleep(uint32 milliseconds) {
     // the safe-points of the thread to be slept, thus is easier to lead to deadlock or other related issues.
     VeilAssert(embedded_os_thread.id() == os::Thread::current_thread_id(), "Sleep invoked by another thread.");
 
+    wake_handshake.tok(); // Just to make sure the state of wake_handshake is reset.
+
     // It is better to check for interrupt before sleeping. Since the thread is deemed to be 'killed', thus this sleep
     // is just prolonged its trivial existence. If the interrupt thread is joining with this thread, executing sleep
     // will have it waited for more time which is bad for performance.
-    if (check_if_interrupted()) return false;
+    if (wake_handshake.tok()) return false;
 
     // The following logic if for the handling of spurious wakeup when blocking on the self_blocking_cv, this thread
     // must sleep for a period equals or more than the requested period. In case of a false alarm (not interrupted), we
-    // should let this thread to block on self_blocking_cv again for the remining time.
+    // should let this thread to block on self_blocking_cv again for the remaining time.
     uint64 now = os::current_time_milliseconds();
     auto time_left = static_cast<uint64>(milliseconds);
     while (time_left > 0) {
         // Checking if interrupted before executing the sleep, the check here need to handle if the blocking on the
         // self_blocking_cv is being notified on interrupt, which the sleep should be over.
-        if (check_if_interrupted()) return false;
+        if (wake_handshake.tok()) return false;
         self_blocking_cv.wait_for(time_left);
         // Calculate the time elapsed in the blocking state.
         uint64 diff = os::current_time_milliseconds() - now;
@@ -251,10 +240,44 @@ bool VMThread::sleep(uint32 milliseconds) {
     return true; // This shows that the thread have completed the sleeping period without being interrupted.
 }
 
-inline bool VMThread::check_if_interrupted() { return signaled_interrupt.load(); }
+void VMThread::wake() { wake_handshake.tik(); }
+
+bool VMThread::check_if_interrupted() { return signaled_interrupt.load(); }
+
+bool VMThread::request_pause(uint32 wait_milliseconds) {
+    VeilAssert(!idle, "Attempt to pause an idle thread.");
+
+    if (!pause_handshake.tik()) return false;
+    uint64 now = os::current_time_milliseconds();
+    auto time_left = static_cast<uint64>(wait_milliseconds);
+    while (time_left > 0) {
+        requester_waiting_cv.wait_for(time_left);
+        // Since in the previous action we have 'tik-ed' the thread.pause_handshake, if it is tik again it means the
+        // thread have received the request
+        if (pause_handshake.is_tik()) return true;
+        // Calculate the time elapsed in the waiting state.
+        uint64 diff = os::current_time_milliseconds() - now;
+        // The value of time_left can be negative if subtract directly, since the type of time_left is unsigned,
+        // negative value means greater than 0 again, thus we have to set it to 0 if negative.
+        time_left = wait_milliseconds > diff ? wait_milliseconds - diff : 0;
+    }
+    return false;
+}
+
+void VMThread::resume() {
+    VeilAssert(!idle, "Attempt to resume an idle thread.");
+
+    if (pause_handshake.is_tok() && !resume_handshake.tik()) return;
+    while(pause_handshake.is_tok() && !resume_handshake.is_tik()) {
+        self_blocking_cv.notify();
+        os::Thread::static_sleep(0);
+    }
+}
 
 void VMThread::pause_if_requested() {
-    // TODO: Implement.
+    if (!pause_handshake.tok()) return;
+    requester_waiting_cv.notify();
+    while (!resume_handshake.tok()) self_blocking_cv.wait();
 }
 
 void VMService::execute() {
@@ -272,10 +295,7 @@ void VMService::execute() {
     VMThread *host_thread = this->vm::HasRoot<VMThread>::get();
     this->vm::HasRoot<VMThread>::unbind();
 
-    auto *thread_return_task = new Scheduler::ThreadReturnTask(*host_thread);
-    thread_return_task->transfer_ownership();
-
-    scheduler->add_realtime_task(*thread_return_task);
+    scheduler->add_realtime_task(host_thread->self_return_task);
     scheduler->notify_added_task();
 
     // The current service's lifecycle ends gracefully here.
@@ -301,7 +321,7 @@ void Scheduler::StartServiceTask::run() {
     target_service->vm::HasRoot<Scheduler>::bind(*scheduler);
 
     VMThread &host_thread = scheduler->idle_thread();
-    VMThreadAccess::mark_busy(host_thread);
+    host_thread.idle = false;
 
     host_thread.host(*target_service);
 }
@@ -311,6 +331,19 @@ Scheduler::ThreadReturnTask::ThreadReturnTask(VMThread &target_thread) : target_
 void Scheduler::ThreadReturnTask::run() {
     target_thread->vm::HasMember<VMService>::unbind();
 
-    VMThreadAccess::wait_for_termination(*target_thread);
-    VMThreadAccess::mark_idle(*target_thread);
+    target_thread->embedded_os_thread.join();
+    target_thread->idle = true;
 }
+
+Scheduler::ThreadPauseTask::ThreadPauseTask(VMThread &target_thread) : target_thread(&target_thread) {}
+
+void Scheduler::ThreadPauseTask::run() {
+    if (!target_thread->request_pause(config::pause_request_wait_milliseconds)) {
+        std::string service_name = target_thread->vm::HasMember<VMService>::get()->get_name();
+        veil::force_exit_on_error("Pausing thread of (" + service_name + ") takes too long...", VeilGetLineInfo);
+    }
+}
+
+Scheduler::ThreadResumeTask::ThreadResumeTask(VMThread &target_thread) : target_thread(&target_thread) {}
+
+void Scheduler::ThreadResumeTask::run() { target_thread->resume(); }
