@@ -357,7 +357,7 @@ void Mutex::unlock() {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32) && !defined(__CYGWIN__)
 
 struct Win32ConVarStruct : veil::memory::HeapObject {
-    /// \c CONDITION_VARIABLE is a structure with a single attribute of type ( \c void \c* ).
+    /// <code>CONDITION_VARIABLE</code> is a structure with a single attribute of type <code>void *</code>.
     CONDITION_VARIABLE embedded;
 };
 
