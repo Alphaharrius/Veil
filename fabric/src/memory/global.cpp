@@ -18,13 +18,25 @@
 #include "src/memory/global.hpp"
 #include "src/memory/os.hpp"
 
+#if defined(VEIL_ENABLE_PROFILING)
+#include "src/memory/profiling.hpp"
+#endif
+
 using namespace veil::memory;
 
 void *HeapObject::operator new(size_t size) {
-    return os::malloc(size);
+    void *object = os::malloc(size);
+#   if defined(VEIL_ENABLE_PROFILING)
+    ((HeapObject *) object)->allocated_size = size;
+    uint64 _ = os_heap_allocated_size.fetch_add(size);
+#   endif
+    return object;
 }
 
 void HeapObject::operator delete(void *address) {
+#   if defined(VEIL_ENABLE_PROFILING)
+    uint64 _ = os_heap_allocated_size.fetch_sub(((HeapObject *) address)->allocated_size);
+#   endif
     os::free(address);
 }
 

@@ -37,6 +37,11 @@ namespace veil::memory {
         void *operator new[](size_t size) = delete;
 
         void operator delete[](void *address) = delete;
+
+#   if defined(VEIL_ENABLE_PROFILING)
+    private:
+        std::size_t allocated_size = 0;
+#   endif
     };
 
     /// All VM objects that only allocate on the program stack or embedded directly to its parent object should extend
