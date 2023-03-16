@@ -37,26 +37,26 @@ uint64 veil::util::standard_u64_hash_function(uint8 *input_data, uint32 input_le
     uint64 hash_output = hash_seeds[input_length % HASH_SEED_LENGTH];
 
     uint8 *current_byte = input_data;
-    uint32 accumulated_byte_round = 0, byte_round = 0;
+    uint32 accumulated_sum = 0;
     for (uint32 digest_index = 0; digest_index < input_length; digest_index++) {
         hash_output *= *current_byte;
-        byte_round = *current_byte % 8;
-        hash_output = binary_rotate(hash_output, byte_round);
+        hash_output = binary_rotate(hash_output, 37);
 
         uint32 selected_seed_index = *current_byte % HASH_SEED_LENGTH;
         hash_output += hash_seeds[selected_seed_index];
-        hash_seeds[selected_seed_index] += hash_output;
+        hash_output = binary_rotate(hash_output, 17);
 
-        accumulated_byte_round += byte_round;
-        selected_seed_index = accumulated_byte_round % HASH_SEED_LENGTH;
-        hash_output ^= hash_seeds[selected_seed_index];
-        hash_seeds[selected_seed_index] ^= hash_output;
+        accumulated_sum += *current_byte;
+        selected_seed_index = accumulated_sum % HASH_SEED_LENGTH;
+        hash_output *= hash_seeds[selected_seed_index];
     }
 
-    hash_output = binary_rotate(hash_output, accumulated_byte_round % sizeof(uint64));
-    hash_output ^= hash_seeds[accumulated_byte_round % HASH_SEED_LENGTH];
-    hash_output = binary_rotate(hash_output, accumulated_byte_round % sizeof(uint64));
-    hash_output += hash_seeds[(byte_round * 23) % HASH_SEED_LENGTH];
+    hash_output = binary_rotate(hash_output, 41);
+    hash_output *= hash_seeds[accumulated_sum % HASH_SEED_LENGTH];
+    hash_output = binary_rotate(hash_output, 23);
+    hash_output += hash_seeds[accumulated_sum % HASH_SEED_LENGTH];
+    hash_output = binary_rotate(hash_output, 17);
+    hash_output *= hash_seeds[accumulated_sum % HASH_SEED_LENGTH];
 
     return hash_output;
 }
