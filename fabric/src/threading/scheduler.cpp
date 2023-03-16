@@ -16,6 +16,7 @@
 #include "src/threading/config.hpp"
 #include "src/threading/scheduler.hpp"
 #include "src/vm/os.hpp"
+#include "src/util/hash.hpp"
 
 using namespace veil::threading;
 
@@ -268,7 +269,7 @@ void VMThread::resume() {
     VeilAssert(!idle, "Attempt to resume an idle thread.");
 
     if (pause_handshake.is_tok() && !resume_handshake.tik()) return;
-    while(pause_handshake.is_tok() && !resume_handshake.is_tik()) {
+    while (pause_handshake.is_tok() && !resume_handshake.is_tik()) {
         self_blocking_cv.notify();
         os::Thread::static_sleep(0);
     }
@@ -280,8 +281,106 @@ void VMThread::pause_if_requested() {
     while (!resume_handshake.tok()) self_blocking_cv.wait();
 }
 
+class VMServiceTable {
+private:
+    struct Entry;
+
+public:
+    static const uint32 SLOT_COUNT = 4096;
+
+    explicit VMServiceTable();
+
+    void put(uint64 os_thread_id, VMService &service);
+
+    VMService *get(uint64 os_thread_id);
+
+    void remove(uint64 os_thread_id);
+
+private:
+    Entry *slots[SLOT_COUNT]{};
+    Entry *reusable_entries;
+};
+
+struct VMServiceTable::Entry : veil::memory::HeapObject {
+    uint64 os_thread_id = 0;
+    VMService *target_service = nullptr;
+    Entry *next_entry = nullptr;
+};
+
+VMServiceTable::VMServiceTable() : reusable_entries(nullptr) {}
+
+void VMServiceTable::put(uint64 os_thread_id, VMService &service) {
+    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint32 slot_index = hashed_value % SLOT_COUNT;
+
+    Entry *current_entry = slots[slot_index];
+    while (current_entry != nullptr) {
+        if (current_entry->os_thread_id == os_thread_id) break;
+        current_entry = current_entry->next_entry;
+    }
+
+    if (current_entry == nullptr) {
+        if (reusable_entries != nullptr) {
+            current_entry = reusable_entries;
+            reusable_entries = current_entry->next_entry;
+        } else current_entry = new Entry();
+        current_entry->next_entry = slots[slot_index];
+        slots[slot_index] = current_entry;
+    }
+
+    current_entry->os_thread_id = os_thread_id;
+    current_entry->target_service = &service;
+}
+
+VMService *VMServiceTable::get(uint64 os_thread_id) {
+    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint32 slot_index = hashed_value % SLOT_COUNT;
+
+    Entry *current_entry = slots[slot_index];
+    while (current_entry != nullptr) {
+        if (current_entry->os_thread_id == os_thread_id) break;
+        current_entry = current_entry->next_entry;
+    }
+
+    return current_entry != nullptr ? current_entry->target_service : nullptr;
+}
+
+void VMServiceTable::remove(uint64 os_thread_id) {
+    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint32 slot_index = hashed_value % SLOT_COUNT;
+
+    Entry *previous_entry = nullptr, *current_entry = slots[slot_index];
+    while (current_entry != nullptr) {
+        if (current_entry->os_thread_id == os_thread_id) break;
+        previous_entry = current_entry;
+        current_entry = current_entry->next_entry;
+    }
+
+    if (current_entry == nullptr) return;
+
+    if (previous_entry == nullptr) slots[slot_index] = current_entry->next_entry; // Case of matching the first entry.
+
+    else previous_entry->next_entry = current_entry->next_entry; // Remove current entry from the linked list.
+
+    current_entry->next_entry = reusable_entries;
+    reusable_entries = current_entry;
+}
+
+static VMServiceTable global_vm_service_table;
+static veil::os::Mutex global_vm_service_m;
+
 void VMService::execute() {
+    {
+        os::CriticalSection _(global_vm_service_m);
+        global_vm_service_table.put(os::Thread::current_thread_id(), *this);
+    }
+
     run();
+
+    {
+        os::CriticalSection _(global_vm_service_m);
+        global_vm_service_table.remove(os::Thread::current_thread_id());
+    }
 
     // NOTE: The service will be completed by the following means:
     // - The service is interrupted and after proper wrap-up process, the run() method of the service returns thus
@@ -302,11 +401,9 @@ void VMService::execute() {
 }
 
 uint64 VMService::get_unique_identifier() {
-    // This is a temporal way of getting the identifier as a collision must happen due to the not so random nature of
-    // the generating seed and the user of Unix Epoch time millis as a compliment.
     uint64 now = os::current_time_milliseconds();
-    auto self_seed = (uint64) this;
-    return now ^ self_seed;
+    auto self_seed = (uint64) this + now;
+    return util::standard_u64_hash_function(self_seed);
 }
 
 VMService::VMService(std::string name) : vm::HasName(name) {}
@@ -347,3 +444,11 @@ void Scheduler::ThreadPauseTask::run() {
 Scheduler::ThreadResumeTask::ThreadResumeTask(VMThread &target_thread) : target_thread(&target_thread) {}
 
 void Scheduler::ThreadResumeTask::run() { target_thread->resume(); }
+
+VMService &veil::threading::current_service() {
+    os::CriticalSection _(global_vm_service_m);
+    VMService *service = global_vm_service_table.get(os::Thread::current_thread_id());
+    VeilAssert(service != nullptr,
+               "Failed to get current service from thread id:" + std::to_string(os::Thread::current_thread_id()));
+    return *service;
+}

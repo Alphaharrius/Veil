@@ -249,6 +249,16 @@ namespace veil::threading {
         friend void Scheduler::ThreadResumeTask::run();
     };
 
+    /// This method is designed to be used for debugging and diagnostic purposes, for example: which <code>VMService
+    /// </code> have acquired a mutex for a long period of time. This notions stands due to <code>VMService</code> of
+    /// the running thread should be available from using <code>this</code> keyword if called from <code>VMService.run()
+    /// </code>, thus the only use case are those methods that does not have access to the calling service task.
+    /// \attention This method should only be called by threads that host a <code>VMService</code> managed by the <code>
+    /// Scheduler</code> as only those will be stored and mapped with the corresponding thread id retrieved from <code>
+    /// os::Thread::current_thread_id()</code>. <b>Invalid use of this method will lead to process abortion</b>.
+    /// \return The current <code>VMService</code> of the calling thread.
+    VMService &current_service();
+
 }
 
 #endif //VEIL_FABRIC_SRC_THREADING_SCHEDULER_HPP
