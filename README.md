@@ -55,7 +55,6 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
 ### Implementation roadmap
 
 1. [ ] Implement utility structures.
-   - [ ] ```HashTable```
    - [ ] ```ArrayList```
 
 2. [ ] Implement the memory management.
