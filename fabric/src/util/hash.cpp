@@ -53,10 +53,10 @@ uint64 veil::util::standard_u64_hash_function(uint8 *input_data, uint32 input_le
         hash_seeds[selected_seed_index] ^= hash_output;
     }
 
-    hash_output = binary_rotate(hash_output, accumulated_byte_round % 8);
+    hash_output = binary_rotate(hash_output, accumulated_byte_round % sizeof(uint64));
     hash_output ^= hash_seeds[accumulated_byte_round % HASH_SEED_LENGTH];
-    hash_output = binary_rotate(hash_output, accumulated_byte_round % 8);
-    hash_output += hash_seeds[(byte_round * 17) % HASH_SEED_LENGTH];
+    hash_output = binary_rotate(hash_output, accumulated_byte_round % sizeof(uint64));
+    hash_output += hash_seeds[(byte_round * 23) % HASH_SEED_LENGTH];
 
     return hash_output;
 }
