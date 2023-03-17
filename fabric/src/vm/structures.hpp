@@ -55,7 +55,7 @@ namespace veil::vm {
 
     class HasName {
     public:
-        explicit HasName(std::string &name);
+        explicit HasName(std::string name);
 
         std::string get_name();
 
