@@ -49,6 +49,9 @@ namespace veil::threading {
 
     class Scheduler : public memory::ValueObject, private memory::TArena<threading::VMThread> {
     public:
+        static const uint64 NULL_SERVICE_ID = 0;
+        static const uint64 SCHEDULER_SERVICE_ID = 1;
+
         class StartServiceTask;
 
         class ThreadReturnTask;
@@ -68,6 +71,10 @@ namespace veil::threading {
         /// the main thread, which is not part of the scheduler managed threads.
         void start();
 
+        void terminate();
+
+        bool is_terminated();
+
         void add_task(ScheduledTask &task);
 
         void add_realtime_task(ScheduledTask &task);
@@ -75,10 +82,11 @@ namespace veil::threading {
         void notify_added_task();
 
     private:
+        os::atomic_u64_t service_id_distribution;
         /// This flag determines whether the scheduler <b>will be</b> terminated, if this is set to <code>true</code>
         /// then the scheduler will be terminated at the next process cycle and <code>Scheduler::start()</code> will
         /// return.
-        volatile bool termination_requested;
+        os::atomic_bool_t termination_requested;
         /// This is used by the scheduler to pause itself when there are no task left to do, and should only be notified
         /// by the method <code>Scheduler::add_task()</code> only.
         os::ConditionVariable process_cycle_pause_cv;
@@ -191,21 +199,27 @@ namespace veil::threading {
     class VMService : public vm::HasName, public vm::Executable,
                       public vm::HasRoot<Scheduler>, public vm::HasRoot<VMThread> {
     public:
-        explicit VMService(std::string name);
+        explicit VMService(const std::string& name);
 
         virtual ~VMService();
 
+        [[nodiscard]] uint64 get_id() const;
+
         void execute() override;
 
-        uint64 get_unique_identifier();
-
         virtual void run() = 0;
+
+    private:
+        uint64 id;
+
+        void set_id(uint64 service_id);
+
+        friend void Scheduler::start();
+        friend void Scheduler::StartServiceTask::run();
     };
 
     class VMThread : public memory::ArenaObject, public vm::HasRoot<Scheduler>, public vm::HasMember<VMService> {
     public:
-        static const uint64 NULL_SERVICE_IDENTIFIER = 0;
-
         VMThread();
 
         void host(VMService &service);
@@ -217,7 +231,7 @@ namespace veil::threading {
 
     private:
         bool volatile idle;
-        uint64 service_identifier;
+        uint64 current_service_id;
         os::Thread embedded_os_thread;
 
         os::ConditionVariable self_blocking_cv;
@@ -232,6 +246,8 @@ namespace veil::threading {
 
         void wake();
 
+        void interrupt();
+
         bool check_if_interrupted();
 
         bool request_pause(uint32 wait_milliseconds);
@@ -243,10 +259,7 @@ namespace veil::threading {
         Scheduler::ThreadReturnTask self_return_task;
 
         friend void VMService::execute();
-        friend void Scheduler::StartServiceTask::run();
-        friend void Scheduler::ThreadReturnTask::run();
-        friend void Scheduler::ThreadPauseTask::run();
-        friend void Scheduler::ThreadResumeTask::run();
+        friend class Scheduler;
     };
 
     /// This method is designed to be used for debugging and diagnostic purposes, for example: which <code>VMService

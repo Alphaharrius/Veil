@@ -1,5 +1,4 @@
 #include <iostream>
-#include <utility>
 
 #include "src/threading/scheduler.hpp"
 
@@ -9,7 +8,7 @@ class TestService : public VMService {
 public:
     uint32 wait_for;
 
-    explicit TestService(std::string name, uint32 wait_for) : VMService(std::move(name)), wait_for(wait_for) {}
+    explicit TestService(const std::string& name, uint32 wait_for) : VMService(name), wait_for(wait_for) {}
 
     void run() override {
         std::cout << "Service started(" + get_name() + ")...\n";

@@ -66,15 +66,126 @@ ScheduledTask *ScheduledTask::get_next() { return next; }
 
 ScheduledTask *ScheduledTask::get_prev() { return prev; }
 
-Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false) {}
+Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false),
+                         service_id_distribution(SCHEDULER_SERVICE_ID + 1) {}
+
+class VMServiceTable {
+private:
+    struct Entry;
+
+public:
+    static const uint32 SLOT_COUNT = 4096;
+
+    explicit VMServiceTable();
+
+    void put(uint64 os_thread_id, VMService &service);
+
+    VMService *get(uint64 os_thread_id);
+
+    void remove(uint64 os_thread_id);
+
+private:
+    veil::os::Mutex table_access_m;
+
+    Entry *slots[SLOT_COUNT]{};
+    Entry *reusable_entries;
+};
+
+struct VMServiceTable::Entry : veil::memory::HeapObject {
+    uint64 os_thread_id = 0;
+    VMService *target_service = nullptr;
+    Entry *next_entry = nullptr;
+};
+
+VMServiceTable::VMServiceTable() : reusable_entries(nullptr) {}
+
+void VMServiceTable::put(uint64 os_thread_id, VMService &service) {
+    veil::os::CriticalSection _(table_access_m);
+
+    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint32 slot_index = hashed_value % SLOT_COUNT;
+
+    Entry *current_entry = slots[slot_index];
+    while (current_entry != nullptr) {
+        if (current_entry->os_thread_id == os_thread_id) break;
+        current_entry = current_entry->next_entry;
+    }
+
+    if (current_entry == nullptr) {
+        if (reusable_entries != nullptr) {
+            current_entry = reusable_entries;
+            reusable_entries = current_entry->next_entry;
+        } else current_entry = new Entry();
+        current_entry->next_entry = slots[slot_index];
+        slots[slot_index] = current_entry;
+    }
+
+    current_entry->os_thread_id = os_thread_id;
+    current_entry->target_service = &service;
+}
+
+VMService *VMServiceTable::get(uint64 os_thread_id) {
+    veil::os::CriticalSection _(table_access_m);
+
+    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint32 slot_index = hashed_value % SLOT_COUNT;
+
+    Entry *current_entry = slots[slot_index];
+    while (current_entry != nullptr) {
+        if (current_entry->os_thread_id == os_thread_id) break;
+        current_entry = current_entry->next_entry;
+    }
+
+    return current_entry != nullptr ? current_entry->target_service : nullptr;
+}
+
+void VMServiceTable::remove(uint64 os_thread_id) {
+    veil::os::CriticalSection _(table_access_m);
+
+    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint32 slot_index = hashed_value % SLOT_COUNT;
+
+    Entry *previous_entry = nullptr, *current_entry = slots[slot_index];
+    while (current_entry != nullptr) {
+        if (current_entry->os_thread_id == os_thread_id) break;
+        previous_entry = current_entry;
+        current_entry = current_entry->next_entry;
+    }
+
+    if (current_entry == nullptr) return;
+
+    if (previous_entry == nullptr) slots[slot_index] = current_entry->next_entry; // Case of matching the first entry.
+
+    else previous_entry->next_entry = current_entry->next_entry; // Remove current entry from the linked list.
+
+    current_entry->next_entry = reusable_entries;
+    reusable_entries = current_entry;
+}
+
+static VMServiceTable global_vm_service_table;
+
+class SchedulerService : public VMService {
+public:
+    SchedulerService();
+
+    void run() override;
+};
+
+SchedulerService::SchedulerService() : VMService("Runtime:ThreadScheduler") {}
+
+void SchedulerService::run() {} // This is a dummy definition, as it will never be used.
 
 void Scheduler::start() {
+    SchedulerService scheduler_service;
+    scheduler_service.set_id(SCHEDULER_SERVICE_ID);
+    global_vm_service_table.put(os::Thread::current_thread_id(), scheduler_service);
+
     ScheduledTask *selected;
     Fetch:
     {
         os::CriticalSection _(scheduler_action_m);
 
-        if (termination_requested) goto Terminate;
+        if (termination_requested.load()) goto Terminate;
 
             // If there are no task left to do, the scheduler thread will be paused to avoid occupying the CPU.
             // NOTE: current_task == nullptr is count as explicit information to signify the scheduler is now free,
@@ -126,10 +237,26 @@ void Scheduler::start() {
     // handled effortlessly (should be).
     Terminate:
     finalization_on_termination();
+    global_vm_service_table.remove(os::Thread::current_thread_id());
 }
 
+void Scheduler::terminate() { termination_requested.store(true); }
+
+bool Scheduler::is_terminated() { return termination_requested.load(); }
+
 void Scheduler::finalization_on_termination() {
-    // TODO: Implement method.
+    memory::TArenaIterator<VMThread> iterator_for_interrupt(*this);
+    VMThread *current = iterator_for_interrupt.next();
+    while (current != nullptr) {
+        current->interrupt();
+        current = iterator_for_interrupt.next();
+    }
+    memory::TArenaIterator<VMThread> iterator_for_join(*this);
+    current = iterator_for_join.next();
+    while (current != nullptr) {
+        current->embedded_os_thread.join();
+        current = iterator_for_join.next();
+    }
 }
 
 void Scheduler::add_task(ScheduledTask &task) {
@@ -187,7 +314,7 @@ VMThread &Scheduler::idle_thread() {
     return *current;
 }
 
-VMThread::VMThread() : idle(true), service_identifier(NULL_SERVICE_IDENTIFIER), signaled_interrupt(false),
+VMThread::VMThread() : idle(true), current_service_id(Scheduler::NULL_SERVICE_ID), signaled_interrupt(false),
                        thread_join_negotiated(false), self_return_task(*this) {}
 
 bool VMThread::is_idle() const { return idle; }
@@ -203,7 +330,7 @@ void VMThread::host(VMService &service) {
     // The VMService needs to access some functionality of the VMThread, for example sleep. This have to be un-bind
     // before the service completed its lifecycle.
     service.vm::HasRoot<VMThread>::bind(*this);
-    this->service_identifier = service.get_unique_identifier(); // Set the current service identifier of this thread.
+    this->current_service_id = service.get_id(); // Set the current service identifier of this thread.
     this->embedded_os_thread.start(service); // Start the service with the embedded os thread.
 }
 
@@ -243,6 +370,8 @@ bool VMThread::sleep(uint32 milliseconds) {
 
 void VMThread::wake() { wake_handshake.tik(); }
 
+void VMThread::interrupt() { signaled_interrupt.store(true); }
+
 bool VMThread::check_if_interrupted() { return signaled_interrupt.load(); }
 
 bool VMThread::request_pause(uint32 wait_milliseconds) {
@@ -281,106 +410,10 @@ void VMThread::pause_if_requested() {
     while (!resume_handshake.tok()) self_blocking_cv.wait();
 }
 
-class VMServiceTable {
-private:
-    struct Entry;
-
-public:
-    static const uint32 SLOT_COUNT = 4096;
-
-    explicit VMServiceTable();
-
-    void put(uint64 os_thread_id, VMService &service);
-
-    VMService *get(uint64 os_thread_id);
-
-    void remove(uint64 os_thread_id);
-
-private:
-    Entry *slots[SLOT_COUNT]{};
-    Entry *reusable_entries;
-};
-
-struct VMServiceTable::Entry : veil::memory::HeapObject {
-    uint64 os_thread_id = 0;
-    VMService *target_service = nullptr;
-    Entry *next_entry = nullptr;
-};
-
-VMServiceTable::VMServiceTable() : reusable_entries(nullptr) {}
-
-void VMServiceTable::put(uint64 os_thread_id, VMService &service) {
-    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
-    uint32 slot_index = hashed_value % SLOT_COUNT;
-
-    Entry *current_entry = slots[slot_index];
-    while (current_entry != nullptr) {
-        if (current_entry->os_thread_id == os_thread_id) break;
-        current_entry = current_entry->next_entry;
-    }
-
-    if (current_entry == nullptr) {
-        if (reusable_entries != nullptr) {
-            current_entry = reusable_entries;
-            reusable_entries = current_entry->next_entry;
-        } else current_entry = new Entry();
-        current_entry->next_entry = slots[slot_index];
-        slots[slot_index] = current_entry;
-    }
-
-    current_entry->os_thread_id = os_thread_id;
-    current_entry->target_service = &service;
-}
-
-VMService *VMServiceTable::get(uint64 os_thread_id) {
-    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
-    uint32 slot_index = hashed_value % SLOT_COUNT;
-
-    Entry *current_entry = slots[slot_index];
-    while (current_entry != nullptr) {
-        if (current_entry->os_thread_id == os_thread_id) break;
-        current_entry = current_entry->next_entry;
-    }
-
-    return current_entry != nullptr ? current_entry->target_service : nullptr;
-}
-
-void VMServiceTable::remove(uint64 os_thread_id) {
-    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
-    uint32 slot_index = hashed_value % SLOT_COUNT;
-
-    Entry *previous_entry = nullptr, *current_entry = slots[slot_index];
-    while (current_entry != nullptr) {
-        if (current_entry->os_thread_id == os_thread_id) break;
-        previous_entry = current_entry;
-        current_entry = current_entry->next_entry;
-    }
-
-    if (current_entry == nullptr) return;
-
-    if (previous_entry == nullptr) slots[slot_index] = current_entry->next_entry; // Case of matching the first entry.
-
-    else previous_entry->next_entry = current_entry->next_entry; // Remove current entry from the linked list.
-
-    current_entry->next_entry = reusable_entries;
-    reusable_entries = current_entry;
-}
-
-static VMServiceTable global_vm_service_table;
-static veil::os::Mutex global_vm_service_m;
-
 void VMService::execute() {
-    {
-        os::CriticalSection _(global_vm_service_m);
-        global_vm_service_table.put(os::Thread::current_thread_id(), *this);
-    }
-
+    global_vm_service_table.put(os::Thread::current_thread_id(), *this);
     run();
-
-    {
-        os::CriticalSection _(global_vm_service_m);
-        global_vm_service_table.remove(os::Thread::current_thread_id());
-    }
+    global_vm_service_table.remove(os::Thread::current_thread_id());
 
     // NOTE: The service will be completed by the following means:
     // - The service is interrupted and after proper wrap-up process, the run() method of the service returns thus
@@ -394,19 +427,20 @@ void VMService::execute() {
     VMThread *host_thread = this->vm::HasRoot<VMThread>::get();
     this->vm::HasRoot<VMThread>::unbind();
 
+    // If the scheduler is being terminated, there is no need to start a ThreadReturnTask as there will not be a new
+    // service being spawned.
+    if (scheduler->is_terminated()) return;
     scheduler->add_realtime_task(host_thread->self_return_task);
     scheduler->notify_added_task();
 
     // The current service's lifecycle ends gracefully here.
 }
 
-uint64 VMService::get_unique_identifier() {
-    uint64 now = os::current_time_milliseconds();
-    auto self_seed = (uint64) this + now;
-    return util::standard_u64_hash_function(self_seed);
-}
+VMService::VMService(const std::string &name) : vm::HasName("Service:" + name), id(Scheduler::NULL_SERVICE_ID) {}
 
-VMService::VMService(std::string name) : vm::HasName(name) {}
+uint64 VMService::get_id() const { return this->id; }
+
+void VMService::set_id(uint64 service_id) { this->id = service_id; }
 
 VMService::~VMService() = default;
 
@@ -416,6 +450,7 @@ void Scheduler::StartServiceTask::run() {
     Scheduler *scheduler = this->vm::HasRoot<Scheduler>::get();
 
     target_service->vm::HasRoot<Scheduler>::bind(*scheduler);
+    target_service->set_id(scheduler->service_id_distribution.fetch_add(1));
 
     VMThread &host_thread = scheduler->idle_thread();
     host_thread.idle = false;
@@ -446,7 +481,6 @@ Scheduler::ThreadResumeTask::ThreadResumeTask(VMThread &target_thread) : target_
 void Scheduler::ThreadResumeTask::run() { target_thread->resume(); }
 
 VMService &veil::threading::current_service() {
-    os::CriticalSection _(global_vm_service_m);
     VMService *service = global_vm_service_table.get(os::Thread::current_thread_id());
     VeilAssert(service != nullptr,
                "Failed to get current service from thread id:" + std::to_string(os::Thread::current_thread_id()));
