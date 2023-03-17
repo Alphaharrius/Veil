@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "src/threading/scheduler.hpp"
+#include "src/vm/structures.hpp"
 
 using namespace veil::threading;
 
@@ -14,6 +15,8 @@ public:
         std::cout << "Service started(" + get_name() + ")...\n";
         veil::os::Thread::static_sleep(wait_for);
         std::cout << "Service ended(" + get_name() + ").\n";
+
+        this->veil::vm::HasRoot<Scheduler>::get()->terminate();
     }
 };
 

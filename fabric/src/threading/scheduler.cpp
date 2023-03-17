@@ -240,7 +240,10 @@ void Scheduler::start() {
     global_vm_service_table.remove(os::Thread::current_thread_id());
 }
 
-void Scheduler::terminate() { termination_requested.store(true); }
+void Scheduler::terminate() {
+    termination_requested.store(true);
+    notify();
+}
 
 bool Scheduler::is_terminated() { return termination_requested.load(); }
 
@@ -290,7 +293,7 @@ void Scheduler::add_realtime_task(ScheduledTask &task) {
         current_task->connect_next(task);
 }
 
-void Scheduler::notify_added_task() {
+void Scheduler::notify() {
     // Just in case if the scheduler is slept, attempt to wake it up.
     while (process_cycle_paused) {
         process_cycle_pause_cv.notify();
@@ -431,7 +434,7 @@ void VMService::execute() {
     // service being spawned.
     if (scheduler->is_terminated()) return;
     scheduler->add_realtime_task(host_thread->self_return_task);
-    scheduler->notify_added_task();
+    scheduler->notify();
 
     // The current service's lifecycle ends gracefully here.
 }

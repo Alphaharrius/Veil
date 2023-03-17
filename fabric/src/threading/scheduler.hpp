@@ -79,7 +79,7 @@ namespace veil::threading {
 
         void add_realtime_task(ScheduledTask &task);
 
-        void notify_added_task();
+        void notify();
 
     private:
         os::atomic_u64_t service_id_distribution;
