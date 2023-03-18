@@ -20,6 +20,9 @@
 
 using namespace veil::threading;
 
+static const uint64 NULL_SERVICE_IDENTIFIER = 0;
+static veil::os::atomic_u64_t global_vm_service_id_distribution(NULL_SERVICE_IDENTIFIER + 1);
+
 ScheduledTask::ScheduledTask() : request_thread_waiting(false), prev(this), next(this), signal_completed(false),
                                  slept_thread_awake(false) {}
 
@@ -66,8 +69,7 @@ ScheduledTask *ScheduledTask::get_next() { return next; }
 
 ScheduledTask *ScheduledTask::get_prev() { return prev; }
 
-Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false),
-                         service_id_distribution(SCHEDULER_SERVICE_ID + 1) {}
+Scheduler::Scheduler() : process_cycle_paused(true), current_task(nullptr), termination_requested(false) {}
 
 class VMServiceTable {
 private:
@@ -177,7 +179,6 @@ void SchedulerService::run() {} // This is a dummy definition, as it will never 
 
 void Scheduler::start() {
     SchedulerService scheduler_service;
-    scheduler_service.set_id(SCHEDULER_SERVICE_ID);
     global_vm_service_table.put(os::Thread::current_thread_id(), scheduler_service);
 
     ScheduledTask *selected;
@@ -199,9 +200,7 @@ void Scheduler::start() {
             selected = current_task;
             // Setting this to nullptr signals the scheduler to pause on the next round.
             current_task = nullptr;
-        }
-
-        else {
+        } else {
             // Fetch the current task and set the next task as the current task.
             selected = current_task;
             current_task = current_task->get_next();
@@ -319,7 +318,7 @@ VMThread &Scheduler::idle_thread() {
     return *current;
 }
 
-VMThread::VMThread() : idle(true), current_service_id(Scheduler::NULL_SERVICE_ID), signaled_interrupt(false),
+VMThread::VMThread() : idle(true), current_service_identifier(NULL_SERVICE_IDENTIFIER), signaled_interrupt(false),
                        thread_join_negotiated(false), self_return_task(*this) {}
 
 bool VMThread::is_idle() const { return idle; }
@@ -335,7 +334,7 @@ void VMThread::host(VMService &service) {
     // The VMService needs to access some functionality of the VMThread, for example sleep. This have to be un-bind
     // before the service completed its lifecycle.
     service.vm::HasRoot<VMThread>::bind(*this);
-    this->current_service_id = service.get_id(); // Set the current service identifier of this thread.
+    this->current_service_identifier = service.get_identifier(); // Set the current service identifier of this thread.
     this->embedded_os_thread.start(service); // Start the service with the embedded os thread.
 }
 
@@ -441,11 +440,12 @@ void VMService::execute() {
     // The current service's lifecycle ends gracefully here.
 }
 
-VMService::VMService(const std::string &name) : vm::HasName("Service:" + name), id(Scheduler::NULL_SERVICE_ID) {}
+VMService::VMService(const std::string &name) : vm::HasName("Service:" + name) {
+    // Retrieve the identifier which is unique within the entire process.
+    identifier = global_vm_service_id_distribution.fetch_add(1);
+}
 
-uint64 VMService::get_id() const { return this->id; }
-
-void VMService::set_id(uint64 service_id) { this->id = service_id; }
+uint64 VMService::get_identifier() const { return this->identifier; }
 
 VMService::~VMService() = default;
 
@@ -455,7 +455,6 @@ void Scheduler::StartServiceTask::run() {
     Scheduler *scheduler = this->vm::HasRoot<Scheduler>::get();
 
     target_service->vm::HasRoot<Scheduler>::bind(*scheduler);
-    target_service->set_id(scheduler->service_id_distribution.fetch_add(1));
 
     VMThread &host_thread = scheduler->idle_thread();
     host_thread.idle = false;
@@ -488,6 +487,7 @@ void Scheduler::ThreadResumeTask::run() { target_thread->resume(); }
 VMService &veil::threading::current_service() {
     VMService *service = global_vm_service_table.get(os::Thread::current_thread_id());
     VeilAssert(service != nullptr,
-               "Failed to get current service from thread id:" + std::to_string(os::Thread::current_thread_id()));
+               "Failed to get current service from thread identifier:" +
+               std::to_string(os::Thread::current_thread_id()));
     return *service;
 }

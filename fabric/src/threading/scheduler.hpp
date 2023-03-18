@@ -49,9 +49,6 @@ namespace veil::threading {
 
     class Scheduler : public memory::ValueObject, private memory::TArena<threading::VMThread> {
     public:
-        static const uint64 NULL_SERVICE_ID = 0;
-        static const uint64 SCHEDULER_SERVICE_ID = 1;
-
         class StartServiceTask;
 
         class ThreadReturnTask;
@@ -82,7 +79,6 @@ namespace veil::threading {
         void notify();
 
     private:
-        os::atomic_u64_t service_id_distribution;
         /// This flag determines whether the scheduler <b>will be</b> terminated, if this is set to <code>true</code>
         /// then the scheduler will be terminated at the next process cycle and <code>Scheduler::start()</code> will
         /// return.
@@ -203,16 +199,20 @@ namespace veil::threading {
 
         virtual ~VMService();
 
-        [[nodiscard]] uint64 get_id() const;
+        /// A unique identifier for a <code>VMService</code> <b>within the entire process</b> in incremental order which
+        /// <code>VMService</code> which spawned first will have a smaller value.
+        /// \attention Not to be confused with the identifier of a underlying <code>VMThread</code> obtained from <code>
+        /// os::Thread::current_thread_id()</code>, the identifier returned from this <code>get_identifier()</code> method
+        /// cannot be used to identifying an underlying <code>VMThread</code> or <code>os::Thread</code>.
+        /// \return The unique identifier.
+        [[nodiscard]] uint64 get_identifier() const;
 
         void execute() override;
 
         virtual void run() = 0;
 
     private:
-        uint64 id;
-
-        void set_id(uint64 service_id);
+        uint64 identifier;
 
         friend void Scheduler::start();
         friend void Scheduler::StartServiceTask::run();
@@ -231,7 +231,7 @@ namespace veil::threading {
 
     private:
         bool volatile idle;
-        uint64 current_service_id;
+        uint64 current_service_identifier;
         os::Thread embedded_os_thread;
 
         os::ConditionVariable self_blocking_cv;
@@ -267,7 +267,7 @@ namespace veil::threading {
     /// the running thread should be available from using <code>this</code> keyword if called from <code>VMService.run()
     /// </code>, thus the only use case are those methods that does not have access to the calling service task.
     /// \attention This method should only be called by threads that host a <code>VMService</code> managed by the <code>
-    /// Scheduler</code> as only those will be stored and mapped with the corresponding thread id retrieved from <code>
+    /// Scheduler</code> as only those will be stored and mapped with the corresponding thread identifier retrieved from <code>
     /// os::Thread::current_thread_id()</code>. <b>Invalid use of this method will lead to process abortion</b>.
     /// \return The current <code>VMService</code> of the calling thread.
     VMService &current_service();
