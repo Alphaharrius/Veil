@@ -222,8 +222,10 @@ namespace veil::threading {
     public:
         VMThread();
 
+        // TODO: Move to private scope.
         void host(VMService &service);
 
+        // TODO: Move to private scope.
         [[nodiscard]] bool is_idle() const;
 
     protected:
