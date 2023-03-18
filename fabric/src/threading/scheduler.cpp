@@ -324,6 +324,10 @@ VMThread::VMThread() : idle(true), current_service_identifier(NULL_SERVICE_IDENT
 bool VMThread::is_idle() const { return idle; }
 
 void VMThread::host(VMService &service) {
+    // Since this operation is protected by the single threaded nature of the scheduler task loop, the idle thread
+    // retrieved will only be available for hosting the target_service, thus setting the idle flag here will not cause
+    // another hosting request to mistake this thread as an idle thread.
+    idle = false;
     // Reset the all thread states for a fresh start.
     signaled_interrupt.store(false);
     thread_join_negotiated = false;
@@ -372,9 +376,15 @@ bool VMThread::sleep(uint32 milliseconds) {
     return true; // This shows that the thread have completed the sleeping period without being interrupted.
 }
 
-void VMThread::wake() { wake_handshake.tik(); }
+void VMThread::wake() {
+    if (idle) return;
+    wake_handshake.tik();
+}
 
-void VMThread::interrupt() { signaled_interrupt.store(true); }
+void VMThread::interrupt() {
+    if (idle) return;
+    signaled_interrupt.store(true);
+}
 
 bool VMThread::check_if_interrupted() { return signaled_interrupt.load(); }
 
@@ -456,10 +466,7 @@ void Scheduler::StartServiceTask::run() {
 
     target_service->vm::HasRoot<Scheduler>::bind(*scheduler);
 
-    VMThread &host_thread = scheduler->idle_thread();
-    host_thread.idle = false;
-
-    host_thread.host(*target_service);
+    scheduler->idle_thread().host(*target_service);
 }
 
 Scheduler::ThreadReturnTask::ThreadReturnTask(VMThread &target_thread) : target_thread(&target_thread) {}
