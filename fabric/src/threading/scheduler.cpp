@@ -379,11 +379,13 @@ bool VMThread::sleep(uint32 milliseconds) {
 void VMThread::wake() {
     if (idle) return;
     wake_handshake.tik();
+    self_blocking_cv.notify();
 }
 
 void VMThread::interrupt() {
     if (idle) return;
     signaled_interrupt.store(true);
+    wake();
 }
 
 bool VMThread::check_if_interrupted() { return signaled_interrupt.load(); }
@@ -392,6 +394,8 @@ bool VMThread::request_pause(uint32 wait_milliseconds) {
     VeilAssert(!idle, "Attempt to pause an idle thread.");
 
     if (!pause_handshake.tik()) return false;
+    // A pause request should wake the thread from sleep state, this will make the sleeping period not guaranteed.
+    wake();
     uint64 now = os::current_time_milliseconds();
     auto time_left = static_cast<uint64>(wait_milliseconds);
     while (time_left > 0) {
