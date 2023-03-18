@@ -377,13 +377,15 @@ bool VMThread::sleep(uint32 milliseconds) {
 }
 
 void VMThread::wake() {
-    if (idle) return;
+    // No need to check whether the thread is idle since the states mutated here will be reset upon other
+    // actions which uses these states.
     wake_handshake.tik();
     self_blocking_cv.notify();
 }
 
 void VMThread::interrupt() {
-    if (idle) return;
+    // No need to check whether the thread is idle since the states mutated here will be reset upon other
+    // actions which uses these states.
     signaled_interrupt.store(true);
     wake();
 }
