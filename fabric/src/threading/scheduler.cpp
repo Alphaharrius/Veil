@@ -261,6 +261,7 @@ void Scheduler::finalization_on_termination() {
         current->embedded_os_thread.join();
         current = iterator_for_join.next();
     }
+    this->TArena<VMThread>::destruct_objects();
 }
 
 void Scheduler::add_task(ScheduledTask &task) {
