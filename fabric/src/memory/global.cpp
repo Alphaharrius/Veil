@@ -17,6 +17,7 @@
 
 #include "src/memory/global.hpp"
 #include "src/memory/os.hpp"
+#include "src/vm/diagnostics.hpp"
 
 #if defined(VEIL_ENABLE_PROFILING)
 #include "src/memory/profiling.hpp"
@@ -30,6 +31,7 @@ void *HeapObject::operator new(size_t size) {
     ((HeapObject *) object)->allocated_size = size;
     uint64 _ = os_heap_allocated_size.fetch_add(size);
 #   endif
+    VeilAssert(object != nullptr, "Failed to allocate memory from the OS heap.");
     return object;
 }
 
