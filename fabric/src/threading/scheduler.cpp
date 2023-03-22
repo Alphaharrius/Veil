@@ -173,7 +173,7 @@ void VMServiceTable::remove(uint64 identifier_key) {
     reusable_entries = current_entry;
 }
 
-static VMServiceTable global_vm_service_table;
+static VMServiceTable global_thread_id_to_service_table;
 
 class SchedulerService : public VMService {
 public:
@@ -188,7 +188,7 @@ void SchedulerService::run() {} // This is a dummy definition, as it will never 
 
 void Scheduler::start() {
     SchedulerService scheduler_service;
-    global_vm_service_table.put(os::Thread::current_thread_id(), scheduler_service);
+    global_thread_id_to_service_table.put(os::Thread::current_thread_id(), scheduler_service);
 
     ScheduledTask *selected;
     Fetch:
@@ -249,7 +249,7 @@ void Scheduler::start() {
     // handled effortlessly (should be).
     Terminate:
     finalization_on_termination();
-    global_vm_service_table.remove(os::Thread::current_thread_id());
+    global_thread_id_to_service_table.remove(os::Thread::current_thread_id());
 }
 
 void Scheduler::terminate() {
@@ -443,9 +443,9 @@ void VMThread::pause_if_requested() {
 }
 
 void VMService::execute() {
-    global_vm_service_table.put(os::Thread::current_thread_id(), *this);
+    global_thread_id_to_service_table.put(os::Thread::current_thread_id(), *this);
     run();
-    global_vm_service_table.remove(os::Thread::current_thread_id());
+    global_thread_id_to_service_table.remove(os::Thread::current_thread_id());
 
     // NOTE: The service will be completed by the following means:
     // - The service is interrupted and after proper wrap-up process, the run() method of the service returns thus
@@ -510,7 +510,7 @@ Scheduler::ThreadResumeTask::ThreadResumeTask(VMThread &target_thread) : target_
 void Scheduler::ThreadResumeTask::run() { target_thread->resume(); }
 
 VMService &veil::threading::current_service() {
-    VMService *service = global_vm_service_table.get(os::Thread::current_thread_id());
+    VMService *service = global_thread_id_to_service_table.get(os::Thread::current_thread_id());
     VeilAssert(service != nullptr,
                "Failed to get current service from thread identifier:" +
                std::to_string(os::Thread::current_thread_id()));
