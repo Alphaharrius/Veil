@@ -206,8 +206,8 @@ namespace veil::threading {
         /// A unique identifier for a <code>VMService</code> <b>within the entire process</b> in incremental order which
         /// <code>VMService</code> which spawned first will have a smaller value.
         /// \attention Not to be confused with the identifier of a underlying <code>VMThread</code> obtained from <code>
-        /// os::Thread::current_thread_id()</code>, the identifier returned from this <code>get_identifier()</code> method
-        /// cannot be used to identifying an underlying <code>VMThread</code> or <code>os::Thread</code>.
+        /// os::Thread::current_thread_id()</code>, the identifier returned from this <code>get_identifier()</code>
+        /// method cannot be used to identifying an underlying <code>VMThread</code> or <code>os::Thread</code>.
         /// \return The unique identifier.
         [[nodiscard]] uint64 get_identifier() const;
 
@@ -226,11 +226,7 @@ namespace veil::threading {
     public:
         VMThread();
 
-        // TODO: Move to private scope.
-        void host(VMService &service);
-
-        // TODO: Move to private scope.
-        [[nodiscard]] bool is_idle() const;
+        ~VMThread();
 
     protected:
         bool sleep(uint32 milliseconds);
@@ -249,6 +245,10 @@ namespace veil::threading {
 
         bool volatile thread_join_negotiated;
         os::ConditionVariable thread_join_blocking_cv;
+
+        void host(VMService &service);
+
+        [[nodiscard]] bool is_idle() const;
 
         void wake();
 

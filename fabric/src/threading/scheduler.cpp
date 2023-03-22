@@ -339,6 +339,12 @@ VMThread &Scheduler::idle_thread() {
 VMThread::VMThread() : idle(true), current_service_identifier(NULL_SERVICE_IDENTIFIER), signaled_interrupt(false),
                        thread_join_negotiated(false), self_return_task(*this) {}
 
+// This might be weird, but it is required as destructing the thread means that we need to call the destructor for all
+// underlying structures or objects, which one of them is the ThreadReturnTask self_return_task, destructing a task
+// requires that the task is inactive or completed, which in this case is not ensured. Thus, the conclusion is call
+// to inactivate the task explicitly.
+VMThread::~VMThread() { self_return_task.inactivate(); }
+
 bool VMThread::is_idle() const { return idle; }
 
 void VMThread::host(VMService &service) {
