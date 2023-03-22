@@ -37,7 +37,7 @@ void ScheduledTask::wait_for_completion() {
     // Wait until the task is being completed by the scheduler.
     while (this->signal_completed) this->request_thread_cv.wait();
     // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
-    this->slept_thread_awake = true;
+    this->request_thread_waiting = false;
 }
 
 void ScheduledTask::reset_state_for_reuse() {
@@ -226,7 +226,7 @@ void Scheduler::start() {
     selected->signal_completed = true; // Set the task as completed.
     // After the completion of the task, we have to wake up the thread that owns the task if the request thread is
     // blocked on the request_thread_cv.
-    while (selected->request_thread_waiting && !selected->slept_thread_awake) {
+    while (selected->request_thread_waiting) {
         selected->request_thread_cv.notify();
         os::Thread::static_sleep(0);
     }

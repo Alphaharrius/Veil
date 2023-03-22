@@ -138,7 +138,6 @@ namespace veil::threading {
         os::atomic_bool_t task_active;
         bool volatile request_thread_waiting;
         bool volatile signal_completed;
-        bool volatile slept_thread_awake;
 
         void connect_last(ScheduledTask &task);
 
