@@ -89,11 +89,11 @@ public:
 
     explicit VMServiceTable();
 
-    void put(uint64 os_thread_id, VMService &service);
+    void put(uint64 identifier_key, VMService &service);
 
-    VMService *get(uint64 os_thread_id);
+    VMService *get(uint64 identifier_key);
 
-    void remove(uint64 os_thread_id);
+    void remove(uint64 identifier_key);
 
 private:
     veil::os::Mutex table_access_m;
@@ -103,22 +103,22 @@ private:
 };
 
 struct VMServiceTable::Entry : veil::memory::HeapObject {
-    uint64 os_thread_id = 0;
+    uint64 identifier_key = 0;
     VMService *target_service = nullptr;
     Entry *next_entry = nullptr;
 };
 
 VMServiceTable::VMServiceTable() : reusable_entries(nullptr) {}
 
-void VMServiceTable::put(uint64 os_thread_id, VMService &service) {
+void VMServiceTable::put(uint64 identifier_key, VMService &service) {
     veil::os::CriticalSection _(table_access_m);
 
-    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint64 hashed_value = veil::util::standard_u64_hash_function(identifier_key);
     uint32 slot_index = hashed_value % SLOT_COUNT;
 
     Entry *current_entry = slots[slot_index];
     while (current_entry != nullptr) {
-        if (current_entry->os_thread_id == os_thread_id) break;
+        if (current_entry->identifier_key == identifier_key) break;
         current_entry = current_entry->next_entry;
     }
 
@@ -131,34 +131,34 @@ void VMServiceTable::put(uint64 os_thread_id, VMService &service) {
         slots[slot_index] = current_entry;
     }
 
-    current_entry->os_thread_id = os_thread_id;
+    current_entry->identifier_key = identifier_key;
     current_entry->target_service = &service;
 }
 
-VMService *VMServiceTable::get(uint64 os_thread_id) {
+VMService *VMServiceTable::get(uint64 identifier_key) {
     veil::os::CriticalSection _(table_access_m);
 
-    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint64 hashed_value = veil::util::standard_u64_hash_function(identifier_key);
     uint32 slot_index = hashed_value % SLOT_COUNT;
 
     Entry *current_entry = slots[slot_index];
     while (current_entry != nullptr) {
-        if (current_entry->os_thread_id == os_thread_id) break;
+        if (current_entry->identifier_key == identifier_key) break;
         current_entry = current_entry->next_entry;
     }
 
     return current_entry != nullptr ? current_entry->target_service : nullptr;
 }
 
-void VMServiceTable::remove(uint64 os_thread_id) {
+void VMServiceTable::remove(uint64 identifier_key) {
     veil::os::CriticalSection _(table_access_m);
 
-    uint64 hashed_value = veil::util::standard_u64_hash_function(os_thread_id);
+    uint64 hashed_value = veil::util::standard_u64_hash_function(identifier_key);
     uint32 slot_index = hashed_value % SLOT_COUNT;
 
     Entry *previous_entry = nullptr, *current_entry = slots[slot_index];
     while (current_entry != nullptr) {
-        if (current_entry->os_thread_id == os_thread_id) break;
+        if (current_entry->identifier_key == identifier_key) break;
         previous_entry = current_entry;
         current_entry = current_entry->next_entry;
     }
