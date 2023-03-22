@@ -20,8 +20,14 @@
 
 using namespace veil::threading;
 
-static const uint64 NULL_SERVICE_IDENTIFIER = 0;
-static veil::os::atomic_u64_t global_vm_service_id_distribution(NULL_SERVICE_IDENTIFIER + 1);
+/// The default identifier for an VMService that refers to nothing, used in <code>VMThread::current_service_identifier
+/// </code> to indicate no <code>VMService</code> have bind to that <code>VMThread</code> yet.
+/// \attention Set to the maximum value of <code>uint64</code> as there will never be that many services spawned.
+static const uint64 NULL_SERVICE_IDENTIFIER = ~0ULL;
+/// Accessible to the entire process as a distributor of identifier with incremental order for <code>VMService</code>
+/// upon their instantiation using fetch-add operation. Starting from <code>0</code>, <code>VMService</code> that spawn
+/// earlier will take smaller value.
+static veil::os::atomic_u64_t global_vm_service_identifier_distribution(0);
 
 ScheduledTask::ScheduledTask() : request_thread_waiting(false), prev(this), next(this), signal_completed(false),
                                  task_active(true) {}
@@ -469,7 +475,7 @@ void VMService::execute() {
 
 VMService::VMService(const std::string &name) : vm::HasName("Service:" + name) {
     // Retrieve the identifier which is unique within the entire process.
-    identifier = global_vm_service_id_distribution.fetch_add(1);
+    identifier = global_vm_service_identifier_distribution.fetch_add(1);
 }
 
 uint64 VMService::get_identifier() const { return this->identifier; }
