@@ -24,11 +24,12 @@ static const uint64 NULL_SERVICE_IDENTIFIER = 0;
 static veil::os::atomic_u64_t global_vm_service_id_distribution(NULL_SERVICE_IDENTIFIER + 1);
 
 ScheduledTask::ScheduledTask() : request_thread_waiting(false), prev(this), next(this), signal_completed(false),
-                                 slept_thread_awake(false) {}
+                                 task_active(true) {}
 
 ScheduledTask::~ScheduledTask() {
-    VeilAssert(this->signal_completed && (!this->request_thread_waiting || this->slept_thread_awake),
-               "Invalid going out of scope.");
+    // As the ScheduledTask will typically being registered into the task loop of the Scheduler, it cannot be destructed
+    // before being processed and the awakening of the request thread waiting for the task completion.
+    VeilAssert(!task_active.load() || signal_completed && !request_thread_waiting, "Invalid going out of scope.");
 }
 
 void ScheduledTask::wait_for_completion() {
@@ -38,6 +39,14 @@ void ScheduledTask::wait_for_completion() {
     // Since the scheduler will wait until the waiting thread signals its wake, we have to set this flag to true.
     this->slept_thread_awake = true;
 }
+
+void ScheduledTask::reset_state_for_reuse() {
+    task_active.store(true);
+    request_thread_waiting = false;
+    signal_completed = false;
+}
+
+void ScheduledTask::inactivate() { this->task_active.store(false); }
 
 void ScheduledTask::connect_last(ScheduledTask &task) {
     // Connect the previous task to the new task.
@@ -206,6 +215,9 @@ void Scheduler::start() {
             current_task = current_task->get_next();
         }
     }
+
+    // Check if the task is active, if not we will skip this task and move on to the next fetching operation.
+    if (!selected->task_active.load()) goto Fetch;
 
     // start: process the selected task.
     selected->vm::HasRoot<Scheduler>::bind(*this);

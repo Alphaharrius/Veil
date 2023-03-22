@@ -125,12 +125,17 @@ namespace veil::threading {
         /// thread that can notify <code>request_thread_cv</code> than the scheduler itself.
         void wait_for_completion();
 
+        void reset_state_for_reuse();
+
+        void inactivate();
+
         virtual void run() = 0;
 
     private:
         ScheduledTask *prev;
         ScheduledTask *next;
         os::ConditionVariable request_thread_cv;
+        os::atomic_bool_t task_active;
         bool volatile request_thread_waiting;
         bool volatile signal_completed;
         bool volatile slept_thread_awake;
