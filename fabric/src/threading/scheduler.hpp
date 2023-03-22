@@ -50,13 +50,13 @@ namespace veil::threading {
     class Scheduler : public memory::ValueObject, private memory::TArena<threading::VMThread> {
     public:
         class StartServiceTask;
-
         class ThreadReturnTask;
 
+    private:
         class ThreadPauseTask;
-
         class ThreadResumeTask;
 
+    public:
         Scheduler();
 
         /// \brief Start the task loop of the scheduler.
