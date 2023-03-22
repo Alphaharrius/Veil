@@ -452,12 +452,11 @@ void VMService::execute() {
     //   ending the service's lifecycle.
     // - The service is gracefully died the run() method of the service returns thus ending the service's lifecycle.
 
-    Scheduler *scheduler = this->vm::HasRoot<Scheduler>::get();
+    Scheduler *scheduler = this->vm::HasRoot<Scheduler>::root();
 
     // Unbind the root thread just for the sake of tidiness, since we cannot determine whether the owner of this service
     // will reuse this service structure.
-    VMThread *host_thread = this->vm::HasRoot<VMThread>::get();
-    this->vm::HasRoot<VMThread>::unbind();
+    VMThread *host_thread = this->vm::HasRoot<VMThread>::root();
 
     // If the scheduler is being terminated, there is no need to start a ThreadReturnTask as there will not be a new
     // service being spawned.
@@ -480,16 +479,16 @@ VMService::~VMService() = default;
 Scheduler::StartServiceTask::StartServiceTask(VMService &target_service) : target_service(&target_service) {}
 
 void Scheduler::StartServiceTask::run() {
-    Scheduler *scheduler = this->vm::HasRoot<Scheduler>::get();
-
+    Scheduler *scheduler = this->vm::HasRoot<Scheduler>::root();
     target_service->vm::HasRoot<Scheduler>::bind(*scheduler);
-
     scheduler->idle_thread().host(*target_service);
 }
 
 Scheduler::ThreadReturnTask::ThreadReturnTask(VMThread &target_thread) : target_thread(&target_thread) {}
 
 void Scheduler::ThreadReturnTask::run() {
+    // Unbind the VMThread root from the member VMService.
+    target_thread->vm::HasMember<VMService>::member()->vm::HasRoot<VMThread>::unbind();
     target_thread->vm::HasMember<VMService>::unbind();
 
     target_thread->embedded_os_thread.join();
@@ -500,7 +499,7 @@ Scheduler::ThreadPauseTask::ThreadPauseTask(VMThread &target_thread) : target_th
 
 void Scheduler::ThreadPauseTask::run() {
     if (!target_thread->request_pause(config::pause_request_wait_milliseconds)) {
-        std::string service_name = target_thread->vm::HasMember<VMService>::get()->get_name();
+        std::string service_name = target_thread->vm::HasMember<VMService>::member()->get_name();
         veil::force_exit_on_error("Pausing thread of (" + service_name + ") takes too long...", VeilGetLineInfo);
     }
 }
