@@ -90,7 +90,6 @@ Future prospects includes adding a JIT compiler, rewrite part of the VM service 
     - [x] Thread interrupt.
     - [x] Thread pause & resume.
     - [ ] ```VMService``` joining with another ```VMService```.
-    - [ ] ```VMService``` pause & resume.
     - [x] Scheduler termination.
 
 7. [ ] Implement the Veil execution environment.
