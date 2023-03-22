@@ -16,7 +16,7 @@ public:
         veil::os::Thread::static_sleep(wait_for);
         std::cout << "Service ended(" + get_name() + ").\n";
 
-        this->veil::vm::HasRoot<Scheduler>::get()->terminate();
+        this->veil::vm::HasRoot<Scheduler>::root()->terminate();
     }
 };
 
