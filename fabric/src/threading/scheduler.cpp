@@ -473,6 +473,11 @@ void VMService::execute() {
     // If the scheduler is being terminated, there is no need to start a ThreadReturnTask as there will not be a new
     // service being spawned.
     if (scheduler->is_terminated()) return;
+    // Since this task might have been used and processed before, we have to reset the state inorder to pass it back
+    // to the Scheduler (again).
+    host_thread->self_return_task.reset_state_for_reuse();
+    // ThreadReturnTask is the highest in priority comparing to all other tasks as it releases a thread back to idle
+    // state that could be used to host a new VMService.
     scheduler->add_realtime_task(host_thread->self_return_task);
     scheduler->notify();
 
