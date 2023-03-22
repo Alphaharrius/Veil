@@ -66,69 +66,69 @@ namespace veil::vm {
     template<class R>
     class HasRoot {
     public:
-        explicit HasRoot(R &root) : root(&root) {};
+        explicit HasRoot(R &root) : target(&root) {};
 
-        HasRoot() : root(nullptr) {};
+        HasRoot() : target(nullptr) {};
 
         void bind(R &root);
 
         void unbind();
 
-        R *get();
+        R *root();
 
     protected:
-        R *root;
+        R *target;
     };
 
     template<class R>
     void HasRoot<R>::bind(R &r) {
-        VeilAssert(this->HasRoot<R>::root == nullptr, "Rebinding root.");
-        this->HasRoot<R>::root = &r;
+        VeilAssert(this->HasRoot<R>::target == nullptr, "Rebinding target.");
+        this->HasRoot<R>::target = &r;
     }
 
     template<class R>
     void HasRoot<R>::unbind() {
-        this->HasRoot<R>::root = nullptr;
+        this->HasRoot<R>::target = nullptr;
     }
 
     template<class R>
-    R *HasRoot<R>::get() {
-        VeilAssert(this->HasRoot<R>::root != nullptr, "Root not bind.");
-        return this->HasRoot<R>::root;
+    R *HasRoot<R>::root() {
+        VeilAssert(this->HasRoot<R>::target != nullptr, "Root not bind.");
+        return this->HasRoot<R>::target;
     }
 
     template<class M>
     class HasMember {
     public:
-        HasMember() : member(nullptr) {}
+        HasMember() : target(nullptr) {}
 
-        explicit HasMember(M &member) : member(member) {}
+        explicit HasMember(M &member) : target(member) {}
 
         void bind(M &m);
 
         void unbind();
 
-        M *get();
+        M *member();
 
     private:
-        M *member;
+        M *target;
     };
 
     template<class M>
-    M *HasMember<M>::get() {
-        VeilAssert(this->HasMember<M>::member != nullptr, "Member not bind.");
-        return this->HasMember<M>::member;
+    M *HasMember<M>::member() {
+        VeilAssert(this->HasMember<M>::target != nullptr, "Member not bind.");
+        return this->HasMember<M>::target;
     }
 
     template<class M>
     void HasMember<M>::bind(M &m) {
-        VeilAssert(this->HasMember<M>::member== nullptr, "Rebinding member.");
-        this->HasMember<M>::member = &m;
+        VeilAssert(this->HasMember<M>::target == nullptr, "Rebinding target.");
+        this->HasMember<M>::target = &m;
     }
 
     template<class M>
     void HasMember<M>::unbind() {
-        this->HasMember<M>::member = nullptr;
+        this->HasMember<M>::target = nullptr;
     }
 
     class Executable {
