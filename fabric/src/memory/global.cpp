@@ -25,8 +25,6 @@
 
 using namespace veil::memory;
 
-void *ValueObject::operator new(size_t size, void *target_address) { return target_address; }
-
 void *HeapObject::operator new(size_t size) {
     void *object = os::malloc(size);
 #   if defined(VEIL_ENABLE_PROFILING)

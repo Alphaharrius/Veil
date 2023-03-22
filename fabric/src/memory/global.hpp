@@ -50,8 +50,6 @@ namespace veil::memory {
     public:
         void *operator new(size_t size) = delete;
 
-        void *operator new(size_t size, void *target_address);
-
         void *operator new[](size_t size) = delete;
     };
 
